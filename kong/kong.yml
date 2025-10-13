@@ -1,0 +1,38 @@
+_format_version: "3.0"
+_transform: true
+
+plugins:
+  - name: http-log
+    config:
+      http_endpoint: "http://logstash:8081/kong"
+      method: "POST"
+      timeout: 10000
+      keepalive: 60000
+      flush_timeout: 2
+      retry_count: 3
+      queue_size: 1000
+      headers:
+        Content-Type: "application/json"
+
+services:
+  - name: usersvc
+    url: http://usersvc:3000
+    routes:
+      - name: usersvc-all
+        paths: ["/api"]
+        strip_path: true
+        methods: ["GET","POST","PUT","DELETE"]
+        plugins:
+          - name: rate-limiting
+            config: { minute: 600, policy: local }
+
+  - name: authsvc
+    url: http://usersvc:3000
+    routes:
+      - name: login
+        paths: ["/auth/login"]
+        strip_path: false
+        methods: ["POST"]
+        plugins:
+          - name: rate-limiting
+            config: { second: 5, minute: 60, policy: local }
