@@ -1,3 +1,6 @@
 #docx
 *.docx
 
+# usersvc/node_modules
+usersvc/node_modules/
+

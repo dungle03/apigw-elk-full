@@ -19,8 +19,9 @@ export class AuthService {
       const { data } = await axios.post(url, params);
       this.logger.log(`Login success for user "${username}"`);
       return { access_token: data.access_token, expires_in: data.expires_in };
-    } catch (e) {
-      this.logger.warn(`Login failed for user "${username}"`);
+    } catch (e: any) {
+      const errorDetails = e.response ? e.response.data : e.message;
+      this.logger.warn(`Login failed for user "${username}"`, errorDetails);
       throw new UnauthorizedException('Invalid credentials');
     }
   }

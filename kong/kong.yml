@@ -11,20 +11,14 @@ plugins:
       flush_timeout: 2
       retry_count: 3
       queue_size: 1000
-      headers:
-        Content-Type: "application/json"
 
 services:
   - name: usersvc
     url: http://usersvc:3000
-    plugins:
-      - name: request-validator
-        config:
-          body_schema: file:///kong/specs/openapi.yml
     routes:
       - name: usersvc-all
         paths: ["/api"]
-        strip_path: true
+        strip_path: false
         methods: ["GET","POST","PUT","DELETE"]
         plugins:
           - name: rate-limiting
@@ -32,10 +26,6 @@ services:
 
   - name: authsvc
     url: http://usersvc:3000
-    plugins:
-      - name: request-validator
-        config:
-          body_schema: file:///kong/specs/openapi.yml
     routes:
       - name: login
         paths: ["/auth/login"]
