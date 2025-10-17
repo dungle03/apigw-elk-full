@@ -1,129 +1,144 @@
-# API Gateway Security Service – Student Project
+# API Gateway Security Service
 
-> Đồ án mẫu bảo vệ API trước brute-force, abuse và giúp quan sát lưu lượng theo yêu cầu phạm vi bắt buộc của nhóm.
+Một dự án mẫu trình diễn kiến trúc bảo mật API hiện đại, sử dụng Kong Gateway, Keycloak và ELK Stack để tạo ra một lớp bảo vệ trung tâm, chống lại các mối đe dọa phổ biến và cung cấp khả năng giám sát toàn diện.
 
-## 1. Tổng quan hệ thống
+## ✨ Tính năng nổi bật
+
+- **🛡️ Lớp bảo vệ trung tâm:** Mọi API đều được bảo vệ bởi Kong API Gateway.
+- **🔑 Xác thực & Phân quyền chuẩn hóa:** Tích hợp với Keycloak sử dụng chuẩn OpenID Connect (OIDC) và JWT.
+- **💥 Chống tấn công Brute-Force:** Áp dụng Rate Limiting chặt chẽ trên các endpoint nhạy cảm (ví dụ: `/auth/login`).
+- **📝 Ngăn chặn dữ liệu không hợp lệ:** Tự động xác thực payload của request dựa trên định nghĩa OpenAPI Schema.
+- **📈 Giám sát và Phân tích tập trung:** Toàn bộ lưu lượng API được ghi log, làm giàu (enrich) và đẩy vào ELK Stack (Elasticsearch, Logstash, Kibana) để trực quan hóa và phát hiện bất thường.
+- **🌍 Phân tích địa lý (GeoIP):** Tự động xác định vị trí của client dựa trên địa chỉ IP để phát hiện các truy cập đáng ngờ.
+
+## 🚀 Kiến trúc hệ thống
+
+Dự án được xây dựng dựa trên kiến trúc microservice, với các thành phần chính được đóng gói bằng Docker.
 
 ```mermaid
 flowchart LR
-    A[Client / k6] -->|HTTP| B[Kong API Gateway]
-    B -->|OIDC| C[Keycloak]
-    B -->|Proxy| D[NestJS User Service]
-    B -->|HTTP Log| E[Logstash]
-    E --> F[Elasticsearch]
-    F --> G[Kibana Dashboard]
+    subgraph "Client"
+        A[User / k6 Scripts]
+    end
+
+    subgraph "API Gateway Layer"
+        B[Kong API Gateway]
+    end
+
+    subgraph "Security & Services"
+        C[Keycloak OIDC]
+        D[NestJS User Service]
+    end
+
+    subgraph "Observability Stack"
+        E[Logstash]
+        F[Elasticsearch]
+        G[Kibana Dashboard]
+    end
+
+    A -->|HTTPS Request| B
+    B -- "1. Validate Schema & Rate Limit" --> B
+    B -- "2. Verify JWT" --> C
+    B -- "3. Proxy to Service" --> D
+    B -- "4. Send Log" --> E
+    E --> F
+    F --> G
 ```
 
 | Thành phần | Vai trò | Ghi chú |
 | --- | --- | --- |
-| Kong Gateway 3.7 | Lớp chắn API, giới hạn tốc độ, ghi log HTTP | DB-less, cấu hình tại `kong/kong.yml` |
-| Keycloak 26 + Postgres 15 | Cấp phát token OIDC/JWT | Realm `demo`, user `demo/demo123`, client public `usersvc-client` |
-| NestJS User Service | API mẫu `/auth/login`, `/api/me` | Xác thực qua Keycloak, bật validation & logging |
-| Logstash 8.15 | Nhận log từ Kong, enrich và đẩy vào ES | Pipeline tại `logstash/pipeline/logstash.conf` |
-| Elasticsearch 8.15 | Lưu trữ log phân tích | Single node, tắt xpack cho môi trường lab |
-| Kibana 8.15 | Dashboard quan sát API | Data view `kong-logs-*` |
-| k6 scripts | Kiểm thử tải (valid & brute force) | `k6/valid.js`, `k6/brute.js` |
+| **Kong Gateway** | Lớp chắn API, thực thi các chính sách bảo mật. | DB-less, cấu hình tại `kong/kong.yml`. |
+| **Keycloak** | Identity Provider, cấp phát và xác thực token JWT. | Realm `demo`, user `demo/demo123`. |
+| **NestJS Service** | API mẫu (`/auth/login`, `/api/me`). | Logic nghiệp vụ chính. |
+| **ELK Stack** | Thu thập, lưu trữ và trực quan hóa log. | Pipeline xử lý log thông minh tại `logstash.conf`. |
+| **k6 Scripts** | Công cụ kiểm thử hiệu năng và an ninh. | Mô phỏng kịch bản hợp lệ và tấn công brute-force. |
 
-## 2. Chuẩn bị môi trường
+## 🛠️ Công nghệ sử dụng
 
-- Docker Engine + Docker Compose v2
-- Node.js 20 (nếu muốn chạy `usersvc` cục bộ)
-- k6 (https://k6.io) để thực hiện bài đo tải
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Kong](https://img.shields.io/badge/Kong-003459?style=for-the-badge&logo=kong&logoColor=white)
+![Keycloak](https://img.shields.io/badge/Keycloak-00A4E4?style=for-the-badge&logo=keycloak&logoColor=white)
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)
+![Elasticsearch](https://img.shields.io/badge/Elasticsearch-005571?style=for-the-badge&logo=elasticsearch&logoColor=white)
+![Logstash](https://img.shields.io/badge/Logstash-005571?style=for-the-badge&logo=logstash&logoColor=white)
+![Kibana](https://img.shields.io/badge/Kibana-005571?style=for-the-badge&logo=kibana&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 
-## 3. Khởi chạy hệ thống
+## ⚙️ Hướng dẫn cài đặt và sử dụng
 
+### Yêu cầu
+- Docker & Docker Compose v2
+- k6 (https://k6.io) để thực hiện kiểm thử tải
+
+### 1. Khởi chạy hệ thống
 ```bash
-# 1) Build & start toàn bộ stack (mất ~1 phút cho Keycloak + Elasticsearch khởi động)
+# Build và khởi chạy toàn bộ các service ở chế độ nền
 docker compose up -d --build
 
-# 2) Kiểm tra trạng thái container
+# Kiểm tra trạng thái các container
 docker compose ps
 ```
+> **Lưu ý:** Hệ thống có thể mất khoảng 1-2 phút để khởi động hoàn toàn, đặc biệt là Keycloak và Elasticsearch.
 
-> Nếu Keycloak chưa import realm (không thấy user `demo`), chạy `docker compose restart keycloak` rồi chờ thêm ~30 giây.
-
-### 3.1. Smoke test thủ công
-
+### 2. Kiểm tra nhanh (Smoke Test)
 ```bash
-# Đăng nhập qua Gateway => nhận access token
-curl -s http://localhost:8000/auth/login \
+# a. Đăng nhập để nhận Access Token
+TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"demo","password":"demo123"}'
+  -d '{"username":"demo","password":"demo123"}' | jq -r .access_token)
 
-# Gọi API me (thay TOKEN ở trên)
-curl -s http://localhost:8000/api/me \
-  -H "Authorization: Bearer TOKEN"
+echo "Access Token: $TOKEN"
+
+# b. Gọi API được bảo vệ với token vừa nhận
+curl -s http://localhost:8000/api/me -H "Authorization: Bearer $TOKEN" | jq
 ```
 
-Kết quả kỳ vọng: request đầu trả về `access_token`, request thứ hai trả về thông tin người dùng (`preferred_username`, `email`). Đồng thời log Kong sẽ xuất hiện trong Kibana sau vài giây.
-
-## 4. Kiểm thử tải với k6
-
-Các script dùng biến môi trường `MODE` để chọn chạy trực tiếp service (`MODE=base`) hoặc qua Kong (`MODE=gw`). Khuyến nghị thao tác theo bảng sau để có số liệu so sánh đưa vào báo cáo.
+### 3. Kiểm thử an ninh với k6
+Các kịch bản kiểm thử được thiết kế để so sánh hiệu năng và khả năng bảo vệ khi chạy qua Gateway (`MODE=gw`) và khi gọi trực tiếp service (`MODE=base`).
 
 ```bash
-# 1) Kịch bản hợp lệ (đăng nhập thành công rồi gọi /api/me)
-MODE=base k6 run k6/valid.js
-MODE=gw   k6 run k6/valid.js
+# Kịch bản 1: Tải hợp lệ (đăng nhập và gọi API)
+# So sánh overhead của Gateway
+MODE=gw k6 run k6/valid.js
 
-# 2) Kịch bản brute force (thử mật khẩu sai liên tục)
-MODE=base k6 run k6/brute.js
-MODE=gw   k6 run k6/brute.js
+# Kịch bản 2: Tấn công Brute-Force (thử mật khẩu sai liên tục)
+# Chứng minh khả năng chống tấn công của Gateway
+MODE=gw k6 run k6/brute.js
 ```
+Khi chạy kịch bản 2, bạn sẽ thấy Kong trả về lỗi `HTTP 429 Too Many Requests` sau một vài lần thử, trong khi service backend nếu gọi trực tiếp sẽ luôn trả về `HTTP 401`.
 
-Ghi lại kết quả chính trong báo cáo:
+## 📊 Quan sát trên Kibana
 
-| Kịch bản | Trung bình RPS | % Check Pass | Ghi chú |
-| --- | --- | --- | --- |
-| valid – MODE=base | ... | ... | Benchmark trực tiếp service |
-| valid – MODE=gw | ... | ... | Expect 200, chứng minh overhead Gateway thấp |
-| brute – MODE=base | ... | ... | Backend trả 401, không giới hạn |
-| brute – MODE=gw | ... | ... | Kong trả 429 sau vài request vì rate limit |
+1.  Truy cập Kibana Dashboard tại: http://localhost:5601
+2.  Vào **Management > Stack Management > Kibana > Data Views**.
+3.  Tạo Data View với pattern `kong-logs-*` và trường thời gian là `@timestamp`.
+4.  Bắt đầu khám phá và xây dựng biểu đồ để theo dõi:
+    -   Lưu lượng request theo status code (đặc biệt là `429` và `401`).
+    -   Các IP có truy cập bất thường.
+    -   Phân bố địa lý của các request.
 
-## 5. Quan sát log trên Kibana
-
-1. Truy cập http://localhost:5601
-2. Tạo Data View mới với pattern `kong-logs-*`, trường thời gian `@timestamp`
-3. Tạo 2 visualization cơ bản (Lens):
-   - **Throughput theo status**: dùng `event.status` làm break down để thấy 429 tăng khi chạy brute force.
-   - **Tỉ lệ rate-limit**: metric `Count`, filter `event.blocked : "rate_limit"`.
-4. Lắp 2 visualization vào Dashboard “Kong Gateway Overview” rồi chụp ảnh minh họa cho báo cáo/slide.
-
-> Logstash pipeline đã chuẩn hóa các trường chính (`event.status`, `event.blocked`, `event.latency_*`). Nếu muốn bổ sung GeoIP hoặc mask thông tin nhạy cảm có thể chỉnh sửa tại `logstash/pipeline/logstash.conf`.
-
-## 6. Cấu trúc thư mục
-
+## 📁 Cấu trúc thư mục
 ```
 .
-├── docker-compose.yml        # Khởi tạo toàn bộ stack
+├── docker-compose.yml        # Định nghĩa và kết nối các service
 ├── kong/
-│   └── kong.yml              # Cấu hình routes, plugin rate limiting + http log
+│   └── kong.yml              # Cấu hình routes và các plugin bảo mật
 ├── keycloak/
-│   └── realm-export.json     # Realm demo: user, client, policy cơ bản
+│   └── realm-export.json     # Dữ liệu mẫu cho Keycloak (realm, user, client)
 ├── usersvc/
-│   ├── src/                  # NestJS service mẫu bảo vệ bởi Keycloak
-│   └── Dockerfile            # Build image Node.js 20 alpine
+│   ├── openapi.yml           # Định nghĩa OpenAPI Schema cho validation
+│   └── src/                  # Mã nguồn NestJS service
 ├── logstash/
-│   └── pipeline/logstash.conf# Parser log Kong -> Elasticsearch
+│   └── pipeline/logstash.conf# Pipeline xử lý và làm giàu log
 └── k6/
-    ├── valid.js              # Happy path (login + me)
-    └── brute.js              # Credential stuffing giả lập
+    ├── valid.js              # Kịch bản kiểm thử hợp lệ
+    └── brute.js              # Kịch bản mô phỏng tấn công brute-force
 ```
 
-## 7. Checklist bàn giao đồ án
+## 🔚 Dọn dẹp
+```bash
+# Dừng và xóa toàn bộ container
+docker compose down
 
-- [ ] Ghi lại log chạy `docker compose up` và ảnh dashboard Kibana trong báo cáo.
-- [ ] Lưu bảng kết quả k6 (4 dòng như hướng dẫn) và phân tích ý nghĩa.
-- [ ] Mô tả luồng xác thực JWT / Keycloak và cơ chế rate limiting của Kong.
-- [ ] Nêu rõ hạn chế (chưa bật TLS, chưa có Redis) và đề xuất hướng phát triển (từ mục mở rộng).
-- [ ] Chuẩn bị demo: chạy `k6/brute.js` ở `MODE=gw` để trình bày cảnh rate-limit.
-
-## 8. Gỡ lỗi nhanh
-
-| Sự cố | Nguyên nhân thường gặp | Cách xử lý |
-| --- | --- | --- |
-| `401 Unauthorized` khi gọi `/api/me` | Không gửi header `Authorization` hoặc token hết hạn | Chạy lại `/auth/login` để lấy token mới |
-| `429 Too Many Requests` ngay khi login | Đang chạy k6 brute force hoặc lặp lại request quá nhanh | Chờ 1 phút cho quota đặt lại |
-| Kibana không thấy data view | Logstash chưa nhận log, kiểm tra container `logstash` | `docker compose logs logstash`, đảm bảo Kong plugin `http-log` hoạt động |
-
-> Khi kết thúc buổi demo, dừng toàn bộ stack bằng `docker compose down` (thêm `-v` nếu muốn xóa volume dữ liệu).
+# (Tùy chọn) Xóa cả volume dữ liệu (database, logs)
+docker compose down -v

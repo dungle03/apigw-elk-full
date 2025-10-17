@@ -1,0 +1,40 @@
+openapi: 3.0.0
+info:
+  title: User Service API
+  version: 1.0.0
+paths:
+  /auth/login:
+    post:
+      summary: User Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  minLength: 6
+              required:
+                - username
+                - password
+      responses:
+        '201':
+          description: Login successful
+  /api/me:
+    get:
+      summary: Get current user info
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User info retrieved
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

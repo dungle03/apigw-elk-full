@@ -17,6 +17,10 @@ plugins:
 services:
   - name: usersvc
     url: http://usersvc:3000
+    plugins:
+      - name: request-validator
+        config:
+          body_schema: file:///kong/specs/openapi.yml
     routes:
       - name: usersvc-all
         paths: ["/api"]
@@ -28,6 +32,10 @@ services:
 
   - name: authsvc
     url: http://usersvc:3000
+    plugins:
+      - name: request-validator
+        config:
+          body_schema: file:///kong/specs/openapi.yml
     routes:
       - name: login
         paths: ["/auth/login"]
