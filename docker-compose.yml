@@ -45,10 +45,10 @@ services:
     volumes:
       - keycloak-db:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U keycloak -d keycloak" ]
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h 127.0.0.1" ]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
     deploy:
       resources:
         limits:
@@ -56,14 +56,16 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
-    command: [ "start-dev", "--import-realm", "--health-enabled=true" ]
+    command: [ "start-dev", "--import-realm" ] # dev mode + import realm.json
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin # biến mới (không deprecated)
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
       JAVA_OPTS: "-Xms256m -Xmx512m"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm.json:ro
@@ -72,11 +74,12 @@ services:
       keycloak-db:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "/opt/keycloak/bin/kc.sh", "tools", "health", "--fail-on-critical" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
+      # ping management port 9000 -> /health/ready (image không có curl)
+      test: [ "CMD-SHELL", "bash -lc 'exec 3<>/dev/tcp/127.0.0.1/9000; printf \"GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -q \"200\" <&3'" ]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 60s
     deploy:
       resources:
         limits:
