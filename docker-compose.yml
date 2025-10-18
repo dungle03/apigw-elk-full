@@ -72,7 +72,7 @@ services:
       keycloak-db:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "/opt/keycloak/bin/kc.sh", "health" ]
+      test: [ "CMD", "/opt/keycloak/bin/kc.sh", "tools", "health", "--fail-on-critical" ]
       interval: 30s
       timeout: 10s
       retries: 5

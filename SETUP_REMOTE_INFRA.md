@@ -60,7 +60,7 @@ docker compose ps
 docker compose logs -f keycloak
 docker compose logs -f elasticsearch
 ```
-> Nếu healthcheck của Keycloak từng báo lỗi `curl: executable file not found`, repo đã chuyển sang dùng `/opt/keycloak/bin/kc.sh health`. Sau khi pull bản mới, chạy `docker compose up -d keycloak` để áp dụng.
+> Nếu healthcheck của Keycloak từng báo lỗi `curl: executable file not found`, repo đã chuyển sang dùng `kc.sh tools health --fail-on-critical`. Sau khi pull bản mới, chạy `docker compose up -d keycloak` để áp dụng.
 
 ## 7. Health Checks
 ```bash
