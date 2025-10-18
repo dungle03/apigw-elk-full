@@ -1,10 +1,11 @@
 _format_version: "3.0"
 _transform: true
 
+# Global Plugins
 plugins:
   - name: http-log
     config:
-      http_endpoint: "http://logstash:8081/kong"
+      http_endpoint: "http://<YOUR_EXTERNAL_IP_OR_DOMAIN>:8081/kong"
       method: "POST"
       timeout: 10000
       keepalive: 60000
@@ -13,24 +14,53 @@ plugins:
       queue_size: 1000
 
 services:
+  # Protected API Service - Requires JWT Authentication
   - name: usersvc
-    url: http://usersvc:3000
+    url: http://<YOUR_EXTERNAL_IP_OR_DOMAIN>:3000
     routes:
-      - name: usersvc-all
+      - name: usersvc-api
         paths: ["/api"]
         strip_path: false
         methods: ["GET","POST","PUT","DELETE"]
         plugins:
+          # OIDC Authentication at Gateway Layer
+          # Kong validates the token with Keycloak before forwarding
+          - name: oidc
+            config:
+              discovery: http://<YOUR_EXTERNAL_IP_OR_DOMAIN>:8080/realms/demo/.well-known/openid-configuration
+              client_id: usersvc-client
+              # This client is public, no secret needed
+              # client_secret: "your-client-secret"
+              scope: "openid profile email"
+              token_endpoint_auth_method: "none"
+          # Rate Limiting for API protection
           - name: rate-limiting
-            config: { minute: 600, policy: local }
+            config: 
+              minute: 600
+              policy: local
+              fault_tolerant: true
 
+  # Login Service - Public endpoint with rate limiting and validation
   - name: authsvc
-    url: http://usersvc:3000
+    url: http://<YOUR_EXTERNAL_IP_OR_DOMAIN>:3000
     routes:
       - name: login
         paths: ["/auth/login"]
         strip_path: false
         methods: ["POST"]
         plugins:
+          # Aggressive Rate Limiting for Brute-Force Protection
           - name: rate-limiting
-            config: { second: 5, minute: 60, policy: local }
+            config: 
+              second: 5
+              minute: 60
+              policy: local
+              fault_tolerant: true
+              hide_client_headers: false
+          # Request Size Limiting
+          - name: request-size-limiting
+            config:
+              allowed_payload_size: 1  # 1 MB max
+          # Bot Detection via User-Agent (simple check)
+          - name: bot-detection
+            enabled: false  # Can be enabled if needed

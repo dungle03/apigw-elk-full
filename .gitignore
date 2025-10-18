@@ -1,6 +1,41 @@
-#docx
+# Documentation (keep in repo but ignore temp files)
 *.docx
+~$*.docx
 
-# usersvc/node_modules
+# Dependencies
 usersvc/node_modules/
+node_modules/
+
+# Build outputs
+usersvc/dist/
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files (if used in future)
+.env
+.env.local
+.env.*.local
+
+# Docker
+.dockerignore
+
+# Temp files
+*.tmp
+login.json
 

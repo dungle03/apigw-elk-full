@@ -1,0 +1,360 @@
+{
+    "info": {
+        "name": "API Gateway Security Service",
+        "_postman_id": "apigw-elk-demo",
+        "description": "Complete test collection for API Gateway with Kong, Keycloak, and ELK Stack",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "access_token",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "01. Authentication",
+            "item": [
+                {
+                    "name": "✅ Login Success",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Response has access_token\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.access_token).to.exist;",
+                                    "    pm.collectionVariables.set(\"access_token\", jsonData.access_token);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Token type is Bearer\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.token_type).to.eql(\"Bearer\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"demo\",\n  \"password\": \"demo123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "**Test Case 1**: Login với credentials hợp lệ\n\n**Expected**: \n- Status: 200 OK\n- Response: JWT access_token\n- Token expires_in: 300 (5 phút)\n\n**Security Check**:\n- ✅ Keycloak OIDC authentication\n- ✅ RS256 JWT signing"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "❌ Login Fail - Password Too Short",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 400\", function () {",
+                                    "    pm.response.to.have.status(400);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Validation error message\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.message).to.include(\"password must be longer\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"demo\",\n  \"password\": \"123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "**Test Case 2**: Input validation - Password < 6 characters\n\n**Expected**: \n- Status: 400 Bad Request\n- Error: \"password must be longer than or equal to 6 characters\"\n\n**Security Check**:\n- ✅ Input validation (class-validator)\n- ✅ OpenAPI schema compliance (minLength: 6)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "❌ Login Fail - Invalid Credentials",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 401\", function () {",
+                                    "    pm.response.to.have.status(401);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Error message exists\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.message).to.exist;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"hacker\",\n  \"password\": \"wrongpass\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "**Test Case 3**: Login với credentials không đúng\n\n**Expected**: \n- Status: 401 Unauthorized\n- Error: \"Invalid username or password\"\n\n**Security Check**:\n- ✅ Keycloak authentication failed\n- ✅ No sensitive information leaked"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Test suite for Authentication endpoints"
+        },
+        {
+            "name": "02. Authorization (JWT)",
+            "item": [
+                {
+                    "name": "❌ Access API without Token",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 401\", function () {",
+                                    "    pm.response.to.have.status(401);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Blocked by Kong Gateway\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.message).to.include(\"Authorization\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "me"
+                            ]
+                        },
+                        "description": "**Test Case 4**: Truy cập API KHÔNG gửi Authorization header\n\n**Expected**: \n- Status: 401 Unauthorized\n- Error: \"Authorization header is missing or invalid\"\n\n**Security Check**:\n- ✅ Kong Gateway pre-function plugin blocks request\n- ✅ Request does NOT reach backend\n- ✅ Defense-in-Depth Layer 1"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "✅ Access API with Valid Token",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"User info returned\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.preferred_username).to.exist;",
+                                    "    pm.expect(jsonData.sub).to.exist;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "me"
+                            ]
+                        },
+                        "description": "**Test Case 5**: Truy cập API với JWT token hợp lệ\n\n**Expected**: \n- Status: 200 OK\n- Response: User info (sub, preferred_username, email, etc.)\n\n**Security Check**:\n- ✅ Kong Gateway validates token format\n- ✅ Backend verifies JWT signature with Keycloak JWKS\n- ✅ Token not expired (exp check)\n\n**NOTE**: Run \"Login Success\" first to get token!"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "❌ Access API with Fake Token",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 401\", function () {",
+                                    "    pm.response.to.have.status(401);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"JWT verification failed\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.message).to.include(\"Invalid\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer fake.token.here"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "me"
+                            ]
+                        },
+                        "description": "**Test Case 6**: Truy cập API với JWT token giả mạo\n\n**Expected**: \n- Status: 401 Unauthorized\n- Error: \"Invalid or expired token\"\n\n**Security Check**:\n- ✅ Backend verifies JWT signature with Keycloak public key\n- ✅ jose library rejects invalid signature\n- ✅ Defense-in-Depth Layer 2"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Test suite for JWT Authorization"
+        },
+        {
+            "name": "03. Rate Limiting",
+            "item": [
+                {
+                    "name": "🛡️ Spam Login Requests",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "// Một số request sẽ PASS (200), một số sẽ bị BLOCK (429)",
+                                    "pm.test(\"Response status is 200 or 429\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
+                                    "});",
+                                    "",
+                                    "if (pm.response.code === 429) {",
+                                    "    pm.test(\"Rate limit exceeded\", function () {",
+                                    "        var jsonData = pm.response.json();",
+                                    "        pm.expect(jsonData.message).to.include(\"rate limit\");",
+                                    "    });",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"demo\",\n  \"password\": \"demo123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "**Test Case 7**: Rate Limiting - Spam requests\n\n**HOW TO TEST**:\n1. Sử dụng Postman Collection Runner\n2. Iterations: 10\n3. Delay: 0 ms\n\n**Expected**: \n- First 5 requests: 200 OK\n- Remaining requests: 429 Too Many Requests\n- Error: \"API rate limit exceeded\"\n\n**Security Check**:\n- ✅ Kong rate-limiting plugin (5 req/sec for /auth/login)\n- ✅ DDoS protection\n- ✅ Backend protected from overload"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Test suite for Rate Limiting protection"
+        }
+    ]
+}

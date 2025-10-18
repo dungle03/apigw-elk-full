@@ -4,7 +4,7 @@ import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
 
 @Injectable()
 export class AuthService {
-  private kcRealmBase = 'http://keycloak:8080/realms/demo';
+  private kcRealmBase = process.env.KEYCLOAK_REALM_URL || 'http://keycloak:8080/realms/demo';
   private readonly logger = new Logger(AuthService.name);
 
   async loginWithKeycloak(username: string, password: string) {
