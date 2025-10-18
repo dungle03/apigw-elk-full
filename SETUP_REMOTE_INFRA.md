@@ -1,19 +1,19 @@
-# Ubuntu VPS Setup for API Gateway Demo
+# Hướng Dẫn Cài Đặt Ubuntu VPS Cho Demo API Gateway
 
-This guide prepares a remote Ubuntu 24.04 LTS server to host the backing services (Keycloak, usersvc, ELK stack) that your local Kong gateway will consume.
+Tài liệu này hướng dẫn cấu hình một máy chủ Ubuntu 24.04 LTS từ xa để chạy các dịch vụ nền (Keycloak, usersvc, ELK) cho Kong gateway đặt tại máy cục bộ của bạn.
 
-## 1. Provision the Instance
-- Choose an EC2 type with at least 2 vCPU and 8 GiB RAM (e.g. `m7i-flex.large`).
-- Attach a 30 GiB or larger gp3 EBS volume.
-- Security group: allow inbound TCP from your gateway machine on ports `22,3000,8080,8081,9200,5601` (limit source IP); optionally allow `443` if you terminate TLS.
+## 1. Chuẩn Bị Máy EC2
+- Chọn loại EC2 có tối thiểu 2 vCPU và 8 GiB RAM (gợi ý `m7i-flex.large`).
+- Gắn ổ EBS gp3 dung lượng 30 GiB trở lên.
+- Security group cần cho phép kết nối TCP từ máy chạy gateway vào các cổng `22,3000,8080,8081,9200,5601` (nên giới hạn theo IP nguồn). Nếu dự định bật HTTPS tại gateway có thể mở thêm `443`.
 
-## 2. Initial Server Prep
+## 2. Chuẩn Bị Máy Chủ Lần Đầu
 ```bash
 ssh -i <key.pem> ubuntu@<PUBLIC_IP>
 sudo apt update && sudo apt upgrade -y
 sudo timedatectl set-timezone Asia/Ho_Chi_Minh
 ```
-(Optional) enable uncomplicated firewall and open required ports:
+Nếu dùng UFW (không bắt buộc) hãy mở các cổng cần thiết rồi bật firewall:
 ```bash
 sudo ufw allow OpenSSH
 sudo ufw allow 3000/tcp
@@ -24,7 +24,7 @@ sudo ufw allow 5601/tcp
 sudo ufw enable
 ```
 
-## 3. Install Docker Engine + Compose Plugin
+## 3. Cài Docker Engine & Docker Compose Plugin
 ```bash
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker ubuntu
@@ -36,59 +36,118 @@ docker --version
 docker compose version
 ```
 
-## 4. Fetch Project Assets
+## 4. Tải Mã Nguồn Dự Án
 ```bash
 # inside the VPS
 git clone https://github.com/dungle03/apigw-elk-full.git
 cd apigw-elk-full
 ```
-If you only need the service directory, copy it from your workstation with `scp -r usersvc keycloak logstash docker-compose.yml ...`.
+Nếu chỉ cần một vài thư mục dịch vụ, có thể chép trực tiếp từ máy cá nhân bằng `scp -r usersvc keycloak logstash docker-compose.yml ...`.
 
-## 5. Configure Remote Environment
-- Edit `docker-compose.yml` if you want different passwords or port mappings.
-- Ensure `keycloak/realm-export.json` contains the realm configuration you expect.
-- For demo data persistence, keep the default named volumes (`keycloak-db`, `esdata`).
+## 5. Điều Chỉnh Môi Trường Trên VPS
+- Thay đổi `docker-compose.yml` nếu muốn cập nhật mật khẩu hay ánh xạ cổng.
+- Kiểm tra `keycloak/realm-export.json` để chắc chắn realm cấu hình đúng nhu cầu.
+- Giữ nguyên các volume đặt tên (`keycloak-db`, `esdata`) để lưu dữ liệu demo.
 
-## 6. Launch Supporting Services
-Run the backing services without Kong:
+## 6. Khởi Chạy Các Dịch Vụ Hỗ Trợ
+Chạy toàn bộ dịch vụ nền (chưa cần khởi động Kong):
 ```bash
 docker compose up -d usersvc keycloak keycloak-db logstash elasticsearch kibana
 ```
-Watch startup logs until each service reports healthy:
+Theo dõi log tới khi các container báo healthy:
 ```bash
 docker compose ps
 docker compose logs -f keycloak
 docker compose logs -f elasticsearch
 ```
-> Nếu healthcheck của Keycloak từng báo lỗi `curl: executable file not found`, repo đã chuyển sang dùng `kc.sh tools health --fail-on-critical`. Sau khi pull bản mới, chạy `docker compose up -d keycloak` để áp dụng.
+> Nếu healthcheck của Keycloak báo lỗi `curl: executable file not found`, mã nguồn đã cập nhật sang lệnh `kc.sh tools health --fail-on-critical`. Sau khi pull bản mới hãy chạy `docker compose up -d keycloak` để cập nhật container.
 
-## 7. Health Checks
+## 7. Kiểm Tra Sức Khỏe & Quản Lý User
+
+### 7.1 Gọi Nhanh Các Dịch Vụ Nội Bộ
 ```bash
-curl http://localhost:3000/health
+# usersvc không có endpoint /health nên gọi login để chắc container trả lời
+curl -i -X POST http://localhost:3000/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"demo","password":"demo123"}'
+
+# Keycloak OpenID discovery
 curl http://localhost:8080/realms/demo/.well-known/openid-configuration
+
+# Logstash ingest endpoint
 curl -X POST http://localhost:8081/kong -d '{}'
+
+# Elasticsearch cluster status
 curl http://localhost:9200/_cluster/health
 ```
-Expose the same endpoints via the public IP to confirm firewall rules:
+
+### 7.2 Tạo Hoặc Đặt Lại Tài Khoản demo Trên Keycloak
 ```bash
-curl http://<PUBLIC_IP>:3000/health
+# Lấy admin token
+ADMIN_TOKEN=$(curl -s -X POST "http://localhost:8080/realms/master/protocol/openid-connect/token" \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'username=admin&password=admin&grant_type=password&client_id=admin-cli' | jq -r .access_token)
+
+# Tạo user demo nếu chưa có (bỏ qua lỗi trùng)
+curl -s -o /dev/null -w '' -X POST "http://localhost:8080/admin/realms/demo/users" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"username":"demo","firstName":"Demo","lastName":"User","email":"demo@example.com","enabled":true}' || true
+
+# Lấy USER_ID
+USER_ID=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "http://localhost:8080/admin/realms/demo/users?username=demo" | jq -r '.[0].id')
+
+# Bật tài khoản, xác thực email và xóa requiredActions
+curl -s -X PUT "http://localhost:8080/admin/realms/demo/users/$USER_ID" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"firstName":"Demo","lastName":"User","email":"demo@example.com","emailVerified":true,"enabled":true,"requiredActions":[]}'
+
+# Đặt lại mật khẩu cố định
+curl -s -X PUT "http://localhost:8080/admin/realms/demo/users/$USER_ID/reset-password" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"type":"password","temporary":false,"value":"demo123"}'
+```
+
+### 7.3 Xóa User demo Khi Cần Dọn Dẹp
+```bash
+curl -s -X DELETE "http://localhost:8080/admin/realms/demo/users/$USER_ID" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+### 7.4 Kiểm Tra Thông Qua Public IP
+```bash
+curl -i -X POST http://<PUBLIC_IP>:3000/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"demo","password":"demo123"}'
+
 curl http://<PUBLIC_IP>:8080/realms/demo/.well-known/openid-configuration
 ```
 
-## 8. Wire Kong Gateway to the VPS
-On your local gateway machine:
-1. Update every `http://<YOUR_EXTERNAL_IP_OR_DOMAIN>` placeholder in `kong/kong.yml` with `http://13.215.228.218` (or your DNS alias) and correct ports.
-2. Redeploy Kong (`docker compose -f docker-compose.kong-only.yml up -d --build` or `docker compose restart kong`).
-3. From inside the Kong container run `curl http://13.215.228.218:3000/health` to verify reachability.
-4. Adjust `logstash/pipeline/logstash.conf` if Elasticsearch is remote (replace `elasticsearch:9200` with `http://13.215.228.218:9200`).
+### 7.5 Kiểm Tra Từ Máy Windows (PowerShell)
+```powershell
+# Đảm bảo security group/ufw mở cổng 3000 trước khi test
+Test-NetConnection <PUBLIC_IP> -Port 3000
 
-## 9. Demo Checklist
-- Kong routes return 200 for `/auth/login` and `/api/me` using remote Keycloak/usersvc.
-- Rate limiting, OIDC, and logging plugins operate correctly (check Kibana at `http://13.215.228.218:5601`).
-- k6 scripts run from the gateway machine with `MODE=base UPSTREAM_HOST=http://13.215.228.218:3000` and with `MODE=gw GATEWAY_HOST=http://<GATEWAY_IP>:8000` for before/after comparisons.
-- Monitor `docker stats` on the VPS to capture resource usage improvements introduced by the gateway.
+# Gọi usersvc trực tiếp (chuỗi JSON không cần escape kép)
+curl.exe -i -X POST "http://<PUBLIC_IP>:3000/auth/login" `
+  -H "Content-Type: application/json" `
+  --data-raw '{"username":"demo","password":"demo123"}'
+```
 
-## 10. Maintenance Notes
-- Restart individual services with `docker compose restart <service>`.
-- Backup volumes: `docker run --rm -v apigw-elk-full_esdata:/data -v $PWD:/backup alpine tar czf /backup/es-backup.tar.gz /data`.
-- Shut down when idle: `docker compose down` (keep volumes) or `docker compose down -v` (wipe data).
+## 8. Kết Nối Kong Gateway Với VPS
+Thao tác tại máy chạy gateway (máy cục bộ):
+1. Cập nhật mọi placeholder `http://<YOUR_EXTERNAL_IP_OR_DOMAIN>` trong `kong/kong.yml` thành `http://54.169.164.250` (hoặc tên miền của bạn) và đảm bảo đúng cổng.
+2. Triển khai lại Kong (`docker compose -f docker-compose.kong-only.yml up -d --build` hoặc `docker compose restart kong`).
+3. Trong container Kong chạy `curl http://54.169.164.250:3000/health` để kiểm tra khả năng truy cập usersvc.
+4. Nếu Elasticsearch đặt ở VPS này, giữ nguyên `logstash/pipeline/logstash.conf`. Nếu chuyển nơi khác cần sửa `hosts` thành `http://<IP_ES>:9200`.
+
+## 9. Danh Sách Kiểm Tra Demo
+- Các route của Kong trả về 200 cho `/auth/login` và `/api/me` (sử dụng Keycloak/usersvc trên VPS).
+- Các plugin OIDC, rate-limiting, http-log hoạt động và log hiển thị trên Kibana (`http://54.169.164.250:5601`).
+- Script k6 chạy trên máy gateway với `MODE=base UPSTREAM_HOST=http://54.169.164.250:3000` và `MODE=gw GATEWAY_HOST=http://<GATEWAY_IP>:8000` để so sánh trước/sau.
+- Dùng `docker stats` trên VPS để đo mức tiêu thụ tài nguyên khi có / không có gateway.
+
+## 10. Ghi Chú Bảo Trì
+- Khởi động lại một dịch vụ: `docker compose restart <service>`.
+- Sao lưu volume: `docker run --rm -v apigw-elk-full_esdata:/data -v $PWD:/backup alpine tar czf /backup/es-backup.tar.gz /data`.
+- Khi không sử dụng: `docker compose down` (giữ dữ liệu) hoặc `docker compose down -v` (xóa sạch volume).
