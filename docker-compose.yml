@@ -45,7 +45,7 @@ services:
     volumes:
       - keycloak-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      test: [ "CMD-SHELL", "pg_isready -U keycloak -d keycloak" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -72,11 +72,11 @@ services:
       keycloak-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      test: [ "CMD", "/opt/keycloak/bin/kc.sh", "health", "--fail" ]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 90s
+      start_period: 120s
     deploy:
       resources:
         limits:
@@ -91,7 +91,7 @@ services:
     ports: [ "9200:9200" ]
     volumes: [ esdata:/usr/share/elasticsearch/data ]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s" ]
       interval: 10s
       timeout: 5s
       retries: 10

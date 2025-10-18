@@ -60,6 +60,7 @@ docker compose ps
 docker compose logs -f keycloak
 docker compose logs -f elasticsearch
 ```
+> Nếu healthcheck của Keycloak báo `curl: executable file not found`, hãy cập nhật `docker-compose.yml` (đã đổi sẵn trong repo) sử dụng `/opt/keycloak/bin/kc.sh health --fail` thay vì `curl`, rồi `docker compose up -d keycloak` để áp dụng.
 
 ## 7. Health Checks
 ```bash
@@ -76,15 +77,15 @@ curl http://<PUBLIC_IP>:8080/realms/demo/.well-known/openid-configuration
 
 ## 8. Wire Kong Gateway to the VPS
 On your local gateway machine:
-1. Update every `http://<YOUR_EXTERNAL_IP_OR_DOMAIN>` placeholder in `kong/kong.yml` with `http://<PUBLIC_IP>` (or DNS) and correct ports.
+1. Update every `http://<YOUR_EXTERNAL_IP_OR_DOMAIN>` placeholder in `kong/kong.yml` with `http://13.215.228.218` (or your DNS alias) and correct ports.
 2. Redeploy Kong (`docker compose -f docker-compose.kong-only.yml up -d --build` or `docker compose restart kong`).
-3. From inside the Kong container run `curl http://<PUBLIC_IP>:3000/health` to verify reachability.
-4. Adjust `logstash/pipeline/logstash.conf` if Elasticsearch is remote (replace `elasticsearch:9200` with `http://<PUBLIC_IP>:9200`).
+3. From inside the Kong container run `curl http://13.215.228.218:3000/health` to verify reachability.
+4. Adjust `logstash/pipeline/logstash.conf` if Elasticsearch is remote (replace `elasticsearch:9200` with `http://13.215.228.218:9200`).
 
 ## 9. Demo Checklist
 - Kong routes return 200 for `/auth/login` and `/api/me` using remote Keycloak/usersvc.
-- Rate limiting, OIDC, and logging plugins operate correctly (check Kibana at `http://<PUBLIC_IP>:5601`).
-- k6 scripts run from the gateway machine with `MODE=base` hitting `http://<PUBLIC_IP>:3000` and with gateway hitting `http://<GATEWAY_IP>:8000` for before/after comparisons.
+- Rate limiting, OIDC, and logging plugins operate correctly (check Kibana at `http://13.215.228.218:5601`).
+- k6 scripts run from the gateway machine with `MODE=base UPSTREAM_HOST=http://13.215.228.218:3000` and with `MODE=gw GATEWAY_HOST=http://<GATEWAY_IP>:8000` for before/after comparisons.
 - Monitor `docker stats` on the VPS to capture resource usage improvements introduced by the gateway.
 
 ## 10. Maintenance Notes

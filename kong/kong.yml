@@ -5,7 +5,7 @@ _transform: true
 plugins:
   - name: http-log
     config:
-      http_endpoint: "http://<YOUR_EXTERNAL_IP_OR_DOMAIN>:8081/kong"
+  http_endpoint: "http://13.215.228.218:8081/kong"
       method: "POST"
       timeout: 10000
       keepalive: 60000
@@ -16,7 +16,7 @@ plugins:
 services:
   # Protected API Service - Requires JWT Authentication
   - name: usersvc
-    url: http://<YOUR_EXTERNAL_IP_OR_DOMAIN>:3000
+  url: http://13.215.228.218:3000
     routes:
       - name: usersvc-api
         paths: ["/api"]
@@ -27,7 +27,7 @@ services:
           # Kong validates the token with Keycloak before forwarding
           - name: oidc
             config:
-              discovery: http://<YOUR_EXTERNAL_IP_OR_DOMAIN>:8080/realms/demo/.well-known/openid-configuration
+              discovery: http://13.215.228.218:8080/realms/demo/.well-known/openid-configuration
               client_id: usersvc-client
               # This client is public, no secret needed
               # client_secret: "your-client-secret"
@@ -42,7 +42,7 @@ services:
 
   # Login Service - Public endpoint with rate limiting and validation
   - name: authsvc
-    url: http://<YOUR_EXTERNAL_IP_OR_DOMAIN>:3000
+  url: http://13.215.228.218:3000
     routes:
       - name: login
         paths: ["/auth/login"]

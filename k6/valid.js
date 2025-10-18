@@ -10,7 +10,9 @@ export let options = {
 };
 
 const MODE = __ENV.MODE || 'gw'; // 'gw' or 'base'
-const BASE = MODE === 'gw' ? 'http://localhost:8000' : 'http://localhost:3000';
+const GATEWAY_HOST = __ENV.GATEWAY_HOST || 'http://localhost:8000';
+const UPSTREAM_HOST = __ENV.UPSTREAM_HOST || 'http://localhost:3000';
+const BASE = MODE === 'gw' ? GATEWAY_HOST : UPSTREAM_HOST;
 
 export default function () {
   const login = http.post(`${BASE}/auth/login`, JSON.stringify({ username: 'demo', password: 'demo123' }), {

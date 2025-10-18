@@ -3,7 +3,9 @@ import { check, sleep } from 'k6';
 
 export let options = { vus: 100, duration: '1m' };
 const MODE = __ENV.MODE || 'gw'; // 'gw' or 'base'
-const BASE = MODE === 'gw' ? 'http://localhost:8000' : 'http://localhost:3000';
+const GATEWAY_HOST = __ENV.GATEWAY_HOST || 'http://localhost:8000';
+const UPSTREAM_HOST = __ENV.UPSTREAM_HOST || 'http://localhost:3000';
+const BASE = MODE === 'gw' ? GATEWAY_HOST : UPSTREAM_HOST;
 
 export default function () {
   const u = `user${__ITER}@mail.com`;
