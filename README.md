@@ -5,53 +5,38 @@ Một dự án mẫu trình diễn kiến trúc bảo mật API hiện đại, s
 ## ✨ Tính năng nổi bật
 
 - **🛡️ Lớp bảo vệ trung tâm:** Mọi API đều đi qua Kong API Gateway trước khi tới backend.
-- **🔑 Chuẩn hóa xác thực JWT:** Kong kiểm tra chữ ký token Keycloak bằng plugin `jwt`, backend không phải tự xử lý.
-- **💥 Chống tấn công Brute-Force:** Áp dụng Rate Limiting chặt chẽ trên các endpoint nhạy cảm (ví dụ: `/auth/login`).
-- **📝 Ràng buộc payload:** Sử dụng `pre-function` (Lua serverless) để kiểm tra cấu trúc request, đảm bảo dữ liệu hợp lệ ngay tại gateway.
-- **📈 Giám sát và Phân tích tập trung:** Lưu lượng API được ghi log, enrich và đẩy vào ELK Stack (Elasticsearch, Logstash, Kibana).
-- **🌍 Phân tích địa lý (GeoIP):** Tự động xác định vị trí của client dựa trên địa chỉ IP để phát hiện truy cập bất thường.
+- **🔑 Chuẩn hóa xác thực JWT:** Kong kiểm tra chữ ký token Keycloak bằng plugin `jwt`.
+- **💥 Chống tấn công Brute-Force:** Áp dụng Rate Limiting chặt chẽ trên các endpoint nhạy cảm.
+- **📝 Ràng buộc payload:** Sử dụng `pre-function` (Lua) để kiểm tra cấu trúc request ngay tại gateway.
+- **📈 Giám sát và Phân tích tập trung:** Toàn bộ lưu lượng API được đẩy vào ELK Stack để phân tích và trực quan hóa.
+- **🌍 Phân tích địa lý (GeoIP):** Tự động xác định vị trí của client dựa trên địa chỉ IP.
 
-## 🚀 Kiến trúc hệ thống
+## 🚀 Kiến trúc triển khai (Mô hình Hybrid)
 
-Dự án được xây dựng dựa trên kiến trúc microservice, với các thành phần chính được đóng gói bằng Docker.
+Để tối ưu hiệu năng và mô phỏng môi trường thực tế, dự án được triển khai theo mô hình Hybrid:
+- **Máy chủ VPS (Từ xa):** Chạy các dịch vụ "nặng" như Keycloak, User Service và ELK Stack.
+- **Máy Local (Máy thật):** Chỉ chạy thành phần nhẹ là Kong API Gateway.
 
 ```mermaid
 flowchart LR
-    subgraph "Client"
-        A[User / k6 Scripts]
+    subgraph "Máy Local (Của Bạn)"
+        A[User / Postman / k6] --> B[Kong API Gateway];
     end
 
-    subgraph "API Gateway Layer"
-        B[Kong API Gateway]
-    end
-
-    subgraph "Security & Services"
+    subgraph "Máy chủ VPS (Từ xa)"
         C[Keycloak OIDC]
         D[NestJS User Service]
-    end
-
-    subgraph "Observability Stack"
         E[Logstash]
         F[Elasticsearch]
         G[Kibana Dashboard]
     end
 
-    A -->|HTTPS Request| B
-    B -- "1. Validate Schema & Rate Limit" --> B
-    B -- "2. Verify JWT (JWKS)" --> C
-    B -- "3. Proxy to Service" --> D
-    B -- "4. Send Log" --> E
-    E --> F
-    F --> G
+    B -- "Gửi request qua Internet" --> D;
+    B -- "Xác thực token" --> C;
+    B -- "Gửi log" --> E;
+    E --> F;
+    F --> G;
 ```
-
-| Thành phần | Vai trò | Ghi chú |
-| --- | --- | --- |
-| **Kong Gateway** | Lớp chắn API, thực thi JWT, rate-limit, validation. | DB-less, cấu hình tại `kong/kong.yml`. |
-| **Keycloak** | Identity Provider, cấp phát token JWT (OIDC). | Realm `demo`, user `demo/demo123`. |
-| **NestJS Service** | API mẫu (`/auth/login`, `/api/me`). | Nhận request đã được gateway xác thực. |
-| **ELK Stack** | Thu thập, lưu trữ và trực quan hóa log. | Pipeline xử lý log thông minh tại `logstash.conf`. |
-| **k6 Scripts** | Công cụ kiểm thử hiệu năng và an ninh. | Mô phỏng kịch bản hợp lệ và brute-force. |
 
 ## 🛠️ Công nghệ sử dụng
 
@@ -64,80 +49,40 @@ flowchart LR
 ![Kibana](https://img.shields.io/badge/Kibana-005571?style=for-the-badge&logo=kibana&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 
-## ⚙️ Hướng dẫn cài đặt và sử dụng
+## 📚 Tài liệu chi tiết
 
-### Yêu cầu
-- Docker & Docker Compose v2
-- k6 (https://k6.io) để thực hiện kiểm thử tải
+Để có hướng dẫn đầy đủ và chi tiết nhất, vui lòng tham khảo các tài liệu sau:
 
-### 1. Khởi chạy hệ thống
-```bash
-# Build và khởi chạy toàn bộ các service ở chế độ nền
-docker compose up -d --build
+- **[PROJECT_GUIDE.md](./PROJECT_GUIDE.md):** **(Bắt đầu từ đây)** Cẩm nang toàn diện về dự án, bao gồm hướng dẫn cài đặt, kịch bản demo chi tiết và chiến lược báo cáo.
+- **[SETUP_REMOTE_INFRA.md](./SETUP_REMOTE_INFRA.md):** Hướng dẫn chi tiết các bước cài đặt và cấu hình máy chủ VPS từ A-Z.
+- **[POSTMAN_TESTING_GUIDE.md](./POSTMAN_TESTING_GUIDE.md):** Hướng dẫn các kịch bản kiểm thử bảo mật bằng Postman.
+- **[KIBANA_GUIDE.md](./KIBANA_GUIDE.md):** Hướng dẫn cách sử dụng Kibana để giám sát và phân tích log.
 
-# Kiểm tra trạng thái các container
-docker compose ps
-```
-> **Lưu ý:** Hệ thống có thể mất khoảng 1-2 phút để khởi động hoàn toàn, đặc biệt là Keycloak và Elasticsearch.
+## ⚙️ Bắt đầu nhanh
 
-### 2. Kiểm tra nhanh (Smoke Test)
-```bash
-# a. Đăng nhập để nhận Access Token
-TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"demo","password":"demo123"}' | jq -r .access_token)
+1.  **Trên VPS:** Làm theo hướng dẫn trong `SETUP_REMOTE_INFRA.md` để khởi chạy các dịch vụ nền.
+2.  **Trên máy Local:**
+    *   Cấu hình file `kong/kong.yml` để trỏ đến IP của VPS.
+    *   Chạy Kong Gateway bằng lệnh:
+        ```bash
+        docker compose -f docker-compose.kong-only.yml up -d --build
+        ```
+3.  **Kiểm thử:** Làm theo các kịch bản trong `POSTMAN_TESTING_GUIDE.md`.
 
-echo "Access Token: $TOKEN"
+Để có hướng dẫn chi tiết hơn, vui lòng xem **[PROJECT_GUIDE.md](./PROJECT_GUIDE.md)**.
 
-# b. Gọi API được bảo vệ với token vừa nhận
-curl -s http://localhost:8000/api/me -H "Authorization: Bearer $TOKEN" | jq
-```
+## 📁 Cấu trúc thư mục chính
 
-### 3. Kiểm thử an ninh với k6
-Các kịch bản kiểm thử được thiết kế để so sánh hiệu năng và khả năng bảo vệ khi chạy qua Gateway (`MODE=gw`) và khi gọi trực tiếp service (`MODE=base`).
-
-```bash
-# Kịch bản 1: Tải hợp lệ (đăng nhập và gọi API)
-# So sánh overhead của Gateway
-MODE=gw k6 run k6/valid.js
-
-# Kịch bản 2: Tấn công Brute-Force (thử mật khẩu sai liên tục)
-# Chứng minh khả năng chống tấn công của Gateway
-MODE=gw k6 run k6/brute.js
-```
-Khi chạy kịch bản 2, bạn sẽ thấy Kong trả về lỗi `HTTP 429 Too Many Requests` sau một vài lần thử, trong khi service backend nếu gọi trực tiếp sẽ luôn trả về `HTTP 401`.
-
-## 📊 Quan sát trên Kibana
-
-1.  Truy cập Kibana Dashboard tại: http://localhost:5601
-2.  Vào **Management > Stack Management > Kibana > Data Views**.
-3.  Tạo Data View với pattern `kong-logs-*` và trường thời gian là `@timestamp`.
-4.  Bắt đầu khám phá và xây dựng biểu đồ để theo dõi:
-    -   Lưu lượng request theo status code (đặc biệt là `429` và `401`).
-    -   Các IP có truy cập bất thường.
-    -   Phân bố địa lý của các request.
-
-## 📁 Cấu trúc thư mục
 ```
 .
-├── docker-compose.yml        # Định nghĩa và kết nối các service
-├── kong/
-│   └── kong.yml              # Cấu hình routes, JWT plugin & validation Lua
-├── keycloak/
-│   └── realm-export.json     # Dữ liệu mẫu cho Keycloak (realm, user, client)
-├── usersvc/
-│   └── src/                  # Mã nguồn NestJS service
-├── logstash/
-│   └── pipeline/logstash.conf# Pipeline xử lý và làm giàu log
-└── k6/
-    ├── valid.js              # Kịch bản kiểm thử hợp lệ
-    └── brute.js              # Kịch bản mô phỏng tấn công brute-force
-```
-
-## 🔚 Dọn dẹp
-```bash
-# Dừng và xóa toàn bộ container
-docker compose down
-
-# (Tùy chọn) Xóa cả volume dữ liệu (database, logs)
-docker compose down -v
+├── PROJECT_GUIDE.md          # Cẩm nang chính của dự án
+├── SETUP_REMOTE_INFRA.md     # Hướng dẫn cài đặt VPS
+├── POSTMAN_TESTING_GUIDE.md  # Kịch bản test với Postman
+├── KIBANA_GUIDE.md           # Hướng dẫn sử dụng Kibana
+├── docker-compose.yml        # Định nghĩa các service chạy trên VPS
+├── docker-compose.kong-only.yml # Định nghĩa service Kong chạy local
+├── kong/                     # Cấu hình Kong Gateway
+├── keycloak/                 # Cấu hình Keycloak Realm
+├── usersvc/                  # Mã nguồn NestJS service
+├── logstash/                 # Cấu hình Logstash pipeline
+└── k6/                       # Kịch bản kiểm thử hiệu năng
