@@ -26,18 +26,18 @@ flowchart LR
     end
 
     subgraph "Máy chủ VPS (Từ xa)"
-        C[Keycloak (Identity Provider)]
-        D[NestJS User Service]
-        E[Logstash]
-        F[Elasticsearch]
-        G[Kibana Dashboard]
+        subgraph "Security & Services"
+            C[Keycloak (Identity Provider)]
+            D[NestJS User Service]
+        end
+        subgraph "Observability Stack"
+            E[Logstash] --> F[Elasticsearch] --> G[Kibana Dashboard];
+        end
     end
 
     B -- "Gửi request qua Internet" --> D;
     B -- "Xác thực token" --> C;
     B -- "Gửi log" --> E;
-    E --> F;
-    F --> G;
 ```
 
 ---
