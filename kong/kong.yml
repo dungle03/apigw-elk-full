@@ -5,7 +5,7 @@ _transform: true
 consumers:
   - username: keycloak-issuer
     jwt_secrets:
-      - key: "http://18.140.63.240:8080/realms/demo"
+      - key: "http://47.129.40.37:8080/realms/demo"
         algorithm: RS256
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----
@@ -22,7 +22,7 @@ consumers:
 plugins:
   - name: http-log
     config:
-      http_endpoint: "http://18.140.63.240:8081/kong"
+      http_endpoint: "http://47.129.40.37:8081/kong"
       method: "POST"
       timeout: 10000
       keepalive: 60000
@@ -33,7 +33,7 @@ plugins:
 services:
   # Login Service - Public endpoint with rate limiting and schema validation
   - name: auth-service
-    url: http://18.140.63.240:3000
+    url: http://47.129.40.37:3000
     routes:
       - name: login-route
         paths: ["/auth/login"]
@@ -77,7 +77,7 @@ services:
 
   # Protected API Service - Requires JWT Authentication
   - name: user-service
-    url: http://18.140.63.240:3000
+    url: http://47.129.40.37:3000
     routes:
       - name: user-api-route
         paths: ["/api"]
