@@ -1,5 +1,4 @@
 # Documentation (keep in repo but ignore temp files)
-*.docx
 ~$*.docx
 
 # Dependencies
@@ -32,10 +31,6 @@ yarn-error.log*
 .env.local
 .env.*.local
 
-# Docker
-.dockerignore
-
 # Temp files
 *.tmp
 login.json
-
