@@ -22,7 +22,8 @@ Ngày nay, API là xương sống của hầu hết các ứng dụng hiện đ�
 ```mermaid
 flowchart LR
     subgraph "Máy Local (Của Bạn)"
-        A[User / Postman / k6] --> B[Kong API Gateway];
+        A[User / Postman / k6]
+        B[Kong API Gateway]
     end
 
     subgraph "Máy chủ VPS (Từ xa)"
@@ -31,13 +32,19 @@ flowchart LR
             D[NestJS User Service]
         end
         subgraph "Observability Stack"
-            E[Logstash] --> F[Elasticsearch] --> G[Kibana Dashboard];
+            E[Logstash]
+            F[Elasticsearch]
+            G[Kibana Dashboard]
         end
     end
 
-    B -- "Gửi request qua Internet" --> D;
-    B -- "Xác thực token" --> C;
-    B -- "Gửi log" --> E;
+    %% Connections
+    A --> B
+    B -- "Gửi request qua Internet" --> D
+    B -- "Xác thực token" --> C
+    B -- "Gửi log" --> E
+    E --> F
+    F --> G
 ```
 
 ---
