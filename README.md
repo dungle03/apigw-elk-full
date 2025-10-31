@@ -20,31 +20,24 @@ Ngày nay, API là xương sống của hầu hết các ứng dụng hiện đ�
 - **Máy Local (Máy thật):** Chỉ chạy thành phần nhẹ là Kong API Gateway, đóng vai trò là cổng vào duy nhất.
 
 ```mermaid
-flowchart LR
+graph LR
     subgraph "Máy Local (Của Bạn)"
-        A[User / Postman / k6]
-        B[Kong API Gateway]
+        A[User / Postman / k6] --> B[Kong API Gateway];
     end
 
     subgraph "Máy chủ VPS (Từ xa)"
-        subgraph "Security & Services"
-            C[Keycloak (Identity Provider)]
-            D[NestJS User Service]
-        end
-        subgraph "Observability Stack"
-            E[Logstash]
-            F[Elasticsearch]
-            G[Kibana Dashboard]
-        end
+        C[Keycloak];
+        D[NestJS User Service];
+        E[Logstash];
+        F[Elasticsearch];
+        G[Kibana];
     end
 
-    %% Connections
-    A --> B
-    B -- "Gửi request qua Internet" --> D
-    B -- "Xác thực token" --> C
-    B -- "Gửi log" --> E
-    E --> F
-    F --> G
+    B -- "Gửi request qua Internet" --> D;
+    B -- "Xác thực token" --> C;
+    B -- "Gửi log" --> E;
+    E --> F;
+    F --> G;
 ```
 
 ---
