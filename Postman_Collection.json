@@ -115,7 +115,7 @@
                                 "login"
                             ]
                         },
-                        "description": "**Test Case 2**: Input validation - Password < 6 characters\n\n**Expected**: \n- Status: 400 Bad Request\n- Error: \"password must be longer than or equal to 6 characters\"\n\n**Security Check**:\n- ✅ Input validation (class-validator)\n- ✅ OpenAPI schema compliance (minLength: 6)"
+                        "description": "**Test Case 2**: Input validation - Password < 6 characters\n\n**Expected**: \n- Status: 400 Bad Request\n- Error: \"password must be longer than or equal to 6 characters\"\n\n**Security Check**:\n- ✅ Gateway Lua validation (pre-function)\n- ✅ Backend validation (class-validator)"
                     },
                     "response": []
                 },

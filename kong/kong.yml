@@ -1,11 +1,28 @@
 _format_version: "3.0"
 _transform: true
 
+# JWT Consumer with Keycloak Public Key
+consumers:
+  - username: keycloak-issuer
+    jwt_secrets:
+      - key: "http://18.140.63.240:8080/realms/demo"
+        algorithm: RS256
+        rsa_public_key: |
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvJCXzONTo7xpT5/fFSU2
+          x+9OdAkxBw6rHVzgaIPlBbFOLevZdWlKqefxFZELM3np9vPbsGWRHn1BQsQlxpr8
+          uyjDoM2jAu68sVfo9qiZBnTZNkvNPr4o1yJzZQExyK4N8zw+4B6gIX2UTCibYMcJ
+          AunwkhprlxrYZp2QrVdlIo/d3lnkb8TDdB3koKMOUE+Nqau03t18c6Hr6qz2MyO+
+          Mg8LfkmAKHupw1njWq72ToCByw9AUMSFPbbfDZKfcBTbcDHwEO8At7KHSnhSAC7n
+          IgaN3bWiv1GYOoPfuyGjSVm2ca9Vle01tO3Tf6DC5qvFU95D00Xn4OpHxqsOzkE+
+          7wIDAQAB
+          -----END PUBLIC KEY-----
+
 # Global Plugins
 plugins:
   - name: http-log
     config:
-      http_endpoint: "http://54.169.164.250:8081/kong"
+      http_endpoint: "http://18.140.63.240:8081/kong"
       method: "POST"
       timeout: 10000
       keepalive: 60000
@@ -14,41 +31,37 @@ plugins:
       queue_size: 1000
 
 services:
-  # Protected API Service - Requires JWT Authentication
-  - name: usersvc
-    url: http://54.169.164.250:3000
+  # Login Service - Public endpoint with rate limiting and schema validation
+  - name: auth-service
+    url: http://18.140.63.240:3000
     routes:
-      - name: usersvc-api
-        paths: ["/api"]
-        strip_path: false
-        methods: ["GET","POST","PUT","DELETE"]
-        plugins:
-          # OIDC Authentication at Gateway Layer
-          # Kong validates the token with Keycloak before forwarding
-          - name: oidc
-            config:
-              discovery: http://54.169.164.250:8080/realms/demo/.well-known/openid-configuration
-              client_id: usersvc-client
-              # This client is public, no secret needed
-              # client_secret: "your-client-secret"
-              scope: "openid profile email"
-              token_endpoint_auth_method: "none"
-          # Rate Limiting for API protection
-          - name: rate-limiting
-            config:
-              minute: 600
-              policy: local
-              fault_tolerant: true
-
-  # Login Service - Public endpoint with rate limiting and validation
-  - name: authsvc
-    url: http://54.169.164.250:3000
-    routes:
-      - name: login
+      - name: login-route
         paths: ["/auth/login"]
         strip_path: false
         methods: ["POST"]
         plugins:
+          # Schema validation implemented via embedded Lua
+          - name: pre-function
+            config:
+              access:
+                - |
+                  local cjson = require "cjson.safe"
+                  local raw_body = kong.request.get_raw_body()
+                  if not raw_body or raw_body == "" then
+                    return kong.response.exit(400, { message = "Payload required" })
+                  end
+                  local body, err = cjson.decode(raw_body)
+                  if not body then
+                    return kong.response.exit(400, { message = "Payload must be valid JSON" })
+                  end
+                  if type(body.username) ~= "string" or type(body.password) ~= "string" then
+                    return kong.response.exit(400, { message = "Username and password must be strings" })
+                  end
+                  local username_len = #body.username
+                  local password_len = #body.password
+                  if username_len < 3 or username_len > 50 or password_len < 6 or password_len > 100 then
+                    return kong.response.exit(400, { message = "Invalid credential format" })
+                  end
           # Aggressive Rate Limiting for Brute-Force Protection
           - name: rate-limiting
             config:
@@ -60,7 +73,28 @@ services:
           # Request Size Limiting
           - name: request-size-limiting
             config:
-              allowed_payload_size: 1  # 1 MB max
-          # Bot Detection via User-Agent (simple check)
-          - name: bot-detection
-            enabled: false  # Can be enabled if needed
+              allowed_payload_size: 1
+
+  # Protected API Service - Requires JWT Authentication
+  - name: user-service
+    url: http://18.140.63.240:3000
+    routes:
+      - name: user-api-route
+        paths: ["/api"]
+        strip_path: false
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        plugins:
+          # JWT Authentication - Verify token from Keycloak
+          - name: jwt
+            config:
+              key_claim_name: iss
+              claims_to_verify:
+                - exp
+              run_on_preflight: true
+              maximum_expiration: 3600
+          # Rate Limiting for API protection
+          - name: rate-limiting
+            config:
+              minute: 100
+              policy: local
+              fault_tolerant: true

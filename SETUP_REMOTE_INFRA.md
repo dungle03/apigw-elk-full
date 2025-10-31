@@ -126,25 +126,25 @@ curl http://<PUBLIC_IP>:8080/realms/demo/.well-known/openid-configuration
 ### 7.5 Kiểm Tra Từ Máy Windows (PowerShell)
 ```powershell
 # Đảm bảo security group/ufw mở cổng 3000 trước khi test
-Test-NetConnection <PUBLIC_IP> -Port 3000
+Test-NetConnection 18.140.63.240 -Port 3000
 
 # Gọi usersvc trực tiếp (chuỗi JSON không cần escape kép)
-curl.exe -i -X POST "http://<PUBLIC_IP>:3000/auth/login" `
+curl.exe -i -X POST "http://18.140.63.240:3000/auth/login" `
   -H "Content-Type: application/json" `
   --data-raw '{"username":"demo","password":"demo123"}'
 ```
 
 ## 8. Kết Nối Kong Gateway Với VPS
 Thao tác tại máy chạy gateway (máy cục bộ):
-1. Cập nhật mọi placeholder `http://<YOUR_EXTERNAL_IP_OR_DOMAIN>` trong `kong/kong.yml` thành `http://54.169.164.250` (hoặc tên miền của bạn) và đảm bảo đúng cổng.
+1. Cập nhật mọi placeholder `http://<YOUR_EXTERNAL_IP_OR_DOMAIN>` trong `kong/kong.yml` thành `http://18.140.63.240` (hoặc tên miền của bạn) và đảm bảo đúng cổng.
 2. Triển khai lại Kong (`docker compose -f docker-compose.kong-only.yml up -d --build` hoặc `docker compose restart kong`).
-3. Trong container Kong chạy `curl http://54.169.164.250:3000/health` để kiểm tra khả năng truy cập usersvc.
+3. Trong container Kong chạy `curl http://18.140.63.240:3000/health` để kiểm tra khả năng truy cập usersvc.
 4. Nếu Elasticsearch đặt ở VPS này, giữ nguyên `logstash/pipeline/logstash.conf`. Nếu chuyển nơi khác cần sửa `hosts` thành `http://<IP_ES>:9200`.
 
 ## 9. Danh Sách Kiểm Tra Demo
 - Các route của Kong trả về 200 cho `/auth/login` và `/api/me` (sử dụng Keycloak/usersvc trên VPS).
-- Các plugin OIDC, rate-limiting, http-log hoạt động và log hiển thị trên Kibana (`http://54.169.164.250:5601`).
-- Script k6 chạy trên máy gateway với `MODE=base UPSTREAM_HOST=http://54.169.164.250:3000` và `MODE=gw GATEWAY_HOST=http://<GATEWAY_IP>:8000` để so sánh trước/sau.
+- Các plugin `pre-function` (validation), `jwt`, `rate-limiting`, `http-log` hoạt động và log hiển thị trên Kibana (`http://18.140.63.240:5601`).
+- Script k6 chạy trên máy gateway với `MODE=base UPSTREAM_HOST=http://18.140.63.240:3000` và `MODE=gw GATEWAY_HOST=http://<GATEWAY_IP>:8000` để so sánh trước/sau.
 - Dùng `docker stats` trên VPS để đo mức tiêu thụ tài nguyên khi có / không có gateway.
 
 ## 10. Ghi Chú Bảo Trì

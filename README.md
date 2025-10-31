@@ -4,12 +4,12 @@ Một dự án mẫu trình diễn kiến trúc bảo mật API hiện đại, s
 
 ## ✨ Tính năng nổi bật
 
-- **🛡️ Lớp bảo vệ trung tâm:** Mọi API đều được bảo vệ bởi Kong API Gateway.
-- **🔑 Xác thực & Phân quyền chuẩn hóa:** Tích hợp với Keycloak sử dụng chuẩn OpenID Connect (OIDC) và JWT.
+- **🛡️ Lớp bảo vệ trung tâm:** Mọi API đều đi qua Kong API Gateway trước khi tới backend.
+- **🔑 Chuẩn hóa xác thực JWT:** Kong kiểm tra chữ ký token Keycloak bằng plugin `jwt`, backend không phải tự xử lý.
 - **💥 Chống tấn công Brute-Force:** Áp dụng Rate Limiting chặt chẽ trên các endpoint nhạy cảm (ví dụ: `/auth/login`).
-- **📝 Ngăn chặn dữ liệu không hợp lệ:** Tự động xác thực payload của request dựa trên định nghĩa OpenAPI Schema.
-- **📈 Giám sát và Phân tích tập trung:** Toàn bộ lưu lượng API được ghi log, làm giàu (enrich) và đẩy vào ELK Stack (Elasticsearch, Logstash, Kibana) để trực quan hóa và phát hiện bất thường.
-- **🌍 Phân tích địa lý (GeoIP):** Tự động xác định vị trí của client dựa trên địa chỉ IP để phát hiện các truy cập đáng ngờ.
+- **📝 Ràng buộc payload:** Sử dụng `pre-function` (Lua serverless) để kiểm tra cấu trúc request, đảm bảo dữ liệu hợp lệ ngay tại gateway.
+- **📈 Giám sát và Phân tích tập trung:** Lưu lượng API được ghi log, enrich và đẩy vào ELK Stack (Elasticsearch, Logstash, Kibana).
+- **🌍 Phân tích địa lý (GeoIP):** Tự động xác định vị trí của client dựa trên địa chỉ IP để phát hiện truy cập bất thường.
 
 ## 🚀 Kiến trúc hệ thống
 
@@ -38,7 +38,7 @@ flowchart LR
 
     A -->|HTTPS Request| B
     B -- "1. Validate Schema & Rate Limit" --> B
-    B -- "2. Verify JWT" --> C
+    B -- "2. Verify JWT (JWKS)" --> C
     B -- "3. Proxy to Service" --> D
     B -- "4. Send Log" --> E
     E --> F
@@ -47,11 +47,11 @@ flowchart LR
 
 | Thành phần | Vai trò | Ghi chú |
 | --- | --- | --- |
-| **Kong Gateway** | Lớp chắn API, thực thi các chính sách bảo mật. | DB-less, cấu hình tại `kong/kong.yml`. |
-| **Keycloak** | Identity Provider, cấp phát và xác thực token JWT. | Realm `demo`, user `demo/demo123`. |
-| **NestJS Service** | API mẫu (`/auth/login`, `/api/me`). | Logic nghiệp vụ chính. |
+| **Kong Gateway** | Lớp chắn API, thực thi JWT, rate-limit, validation. | DB-less, cấu hình tại `kong/kong.yml`. |
+| **Keycloak** | Identity Provider, cấp phát token JWT (OIDC). | Realm `demo`, user `demo/demo123`. |
+| **NestJS Service** | API mẫu (`/auth/login`, `/api/me`). | Nhận request đã được gateway xác thực. |
 | **ELK Stack** | Thu thập, lưu trữ và trực quan hóa log. | Pipeline xử lý log thông minh tại `logstash.conf`. |
-| **k6 Scripts** | Công cụ kiểm thử hiệu năng và an ninh. | Mô phỏng kịch bản hợp lệ và tấn công brute-force. |
+| **k6 Scripts** | Công cụ kiểm thử hiệu năng và an ninh. | Mô phỏng kịch bản hợp lệ và brute-force. |
 
 ## 🛠️ Công nghệ sử dụng
 
@@ -122,11 +122,10 @@ Khi chạy kịch bản 2, bạn sẽ thấy Kong trả về lỗi `HTTP 429 Too
 .
 ├── docker-compose.yml        # Định nghĩa và kết nối các service
 ├── kong/
-│   └── kong.yml              # Cấu hình routes và các plugin bảo mật
+│   └── kong.yml              # Cấu hình routes, JWT plugin & validation Lua
 ├── keycloak/
 │   └── realm-export.json     # Dữ liệu mẫu cho Keycloak (realm, user, client)
 ├── usersvc/
-│   ├── openapi.yml           # Định nghĩa OpenAPI Schema cho validation
 │   └── src/                  # Mã nguồn NestJS service
 ├── logstash/
 │   └── pipeline/logstash.conf# Pipeline xử lý và làm giàu log

@@ -27,8 +27,11 @@
     {
       "username": "demo",
       "enabled": true,
+      "firstName": "Demo",
+      "lastName": "User",
       "email": "demo@example.com",
       "emailVerified": true,
+      "requiredActions": [],
       "credentials": [
         {
           "type": "password",
