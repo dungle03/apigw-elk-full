@@ -104,7 +104,9 @@ services:
 
   logstash:
     image: docker.elastic.co/logstash/logstash:8.15.2
-    ports: [ "8081:8081" ]
+    ports:
+      - "5044:5044"
+      - "8081:8081"
     volumes:
       - ./logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
     depends_on:

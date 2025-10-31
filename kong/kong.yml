@@ -22,13 +22,14 @@ consumers:
 plugins:
   - name: http-log
     config:
-      http_endpoint: "http://47.129.40.37:8081/kong"
+      http_endpoint: "http://47.129.40.37:5044"
       method: "POST"
       timeout: 10000
       keepalive: 60000
-      flush_timeout: 2
-      retry_count: 3
-      queue_size: 1000
+      flush_timeout: 5
+      queue:
+        max_batch_size: 10
+        max_retry_time: 60
 
 services:
   # Login Service - Public endpoint with rate limiting and schema validation
@@ -45,14 +46,9 @@ services:
             config:
               access:
                 - |
-                  local cjson = require "cjson.safe"
-                  local raw_body = kong.request.get_raw_body()
-                  if not raw_body or raw_body == "" then
-                    return kong.response.exit(400, { message = "Payload required" })
-                  end
-                  local body, err = cjson.decode(raw_body)
-                  if not body then
-                    return kong.response.exit(400, { message = "Payload must be valid JSON" })
+                  local body, err = kong.request.get_body()
+                  if err or not body then
+                    return kong.response.exit(400, { message = "Payload must be valid JSON. " .. (err or "") })
                   end
                   if type(body.username) ~= "string" or type(body.password) ~= "string" then
                     return kong.response.exit(400, { message = "Username and password must be strings" })

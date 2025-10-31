@@ -116,7 +116,7 @@ curl -s -X DELETE "http://localhost:8080/admin/realms/demo/users/$USER_ID" \
 
 ### 7.4 Kiểm Tra Thông Qua Public IP
 ```bash
-curl -i -X POST http://<PUBLIC_IP>:3000/auth/login \
+curl -i -X POST http://47.129.40.37:3000/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"demo","password":"demo123"}'
 
@@ -129,7 +129,7 @@ curl http://<PUBLIC_IP>:8080/realms/demo/.well-known/openid-configuration
 Test-NetConnection 18.140.63.240 -Port 3000
 
 # Gọi usersvc trực tiếp (chuỗi JSON không cần escape kép)
-curl.exe -i -X POST "http://18.140.63.240:3000/auth/login" `
+curl.exe -i -X POST "http://localhost:8000/auth/login" `
   -H "Content-Type: application/json" `
   --data-raw '{"username":"demo","password":"demo123"}'
 ```

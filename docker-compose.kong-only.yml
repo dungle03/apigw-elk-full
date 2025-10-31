@@ -1,6 +1,6 @@
 services:
   kong:
-    build: ./kong
+    image: kong/kong:3.7-ubuntu
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /kong/kong.yml
@@ -16,4 +16,4 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 1G
