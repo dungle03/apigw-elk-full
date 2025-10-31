@@ -1,5 +1,6 @@
 # Documentation (keep in repo but ignore temp files)
 ~$*.docx
+PRESENTATION_SCRIPT.md
 
 # Dependencies
 usersvc/node_modules/

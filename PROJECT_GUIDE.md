@@ -183,43 +183,18 @@ Hệ thống của bạn giờ đã sẵn sàng: Gateway chạy ở local, lắn
 
 ---
 
-## Phần 4: Hướng Dẫn Báo Cáo Chi Tiết Với Thầy Giáo
+## Phần 4: Các Câu Hỏi Thường Gặp (Q&A)
 
-Đây là cấu trúc chi tiết cho buổi báo cáo của bạn.
+Đây là một số câu hỏi có thể bạn sẽ gặp trong quá trình báo cáo và gợi ý trả lời:
 
-#### **Slide 1: Tiêu Đề & Giới Thiệu**
-- Tên đề tài: API Gateway Security Service
-- Tên bạn, Lớp, GVHD
-- **Lời thoại:** "Thưa thầy, em xin trình bày về đề tài 'API Gateway Security Service', một giải pháp nhằm giải quyết các thách thức bảo mật cho API trong các hệ thống hiện đại."
+- **Câu hỏi:** *Tại sao lại chọn Kong mà không phải một gateway khác (ví dụ: NGINX, Traefik)?*
+  - **Gợi ý trả lời:** Kong được chọn vì có hệ sinh thái plugin cực kỳ mạnh mẽ và sẵn có (như JWT, Rate Limiting), dễ dàng cấu hình ở chế độ DB-less, và được cộng đồng hỗ trợ rất tốt, phù hợp cho việc xây dựng một giải pháp bảo mật nhanh chóng và hiệu quả.
 
-#### **Slide 2: Bối Cảnh & Vấn Đề**
-- Gạch đầu dòng các vấn đề: API là mục tiêu tấn công, Brute-Force, Thiếu bảo vệ chuyên biệt.
-- **Dẫn chứng:** "Theo Kaspersky, Việt Nam đứng đầu Đông Nam Á về tấn công brute-force năm 2024..."
-- **Lời thoại:** "Những con số này cho thấy việc bảo vệ API không còn là một lựa chọn, mà là một yêu cầu bắt buộc."
+- **Câu hỏi:** *Mô hình triển khai Hybrid này có nhược điểm gì không?*
+  - **Gợi ý trả lời:** Nhược điểm chính là độ trễ mạng (network latency) do request phải đi qua Internet từ máy local đến VPS. Ngoài ra, nó cũng phụ thuộc vào sự ổn định của kết nối Internet.
 
-#### **Slide 3: Kiến Trúc Giải Pháp (Hybrid)**
-- Hiển thị sơ đồ Mermaid mới.
-- **Lời thoại:** "Để giải quyết bài toán trên, em đã xây dựng một hệ thống microservice. Đặc biệt, để tối ưu hiệu năng và mô phỏng môi trường thực tế, em đã triển khai theo mô hình Hybrid: Các dịch vụ nặng như Database và ELK Stack được đặt trên một máy chủ VPS, trong khi thành phần nhẹ là API Gateway được chạy local. Điều này giúp quá trình demo mượt mà và cho thấy khả năng mở rộng của hệ thống."
-- Giải thích ngắn gọn vai trò của từng khối.
-
-#### **Slide 4-7: LIVE DEMO**
-- Tiêu đề cho từng kịch bản: "Demo 1: Luồng Hoạt Động Chuẩn", "Demo 2: Chống Tấn Công Brute-Force",...
-- Thực hiện demo theo kịch bản siêu chi tiết ở Phần 3.
-
-#### **Slide 8: Kết Luận & Hướng Phát Triển**
-- **Tóm tắt Lợi ích:**
-    - **Bảo mật tập trung:** Chính sách an ninh quản lý tại một nơi.
-    - **Bảo vệ Backend:** Che chắn service nghiệp vụ khỏi các cuộc tấn công.
-    - **Tăng cường khả năng giám sát:** Cung cấp cái nhìn toàn cảnh về hệ thống.
-- **Hướng Phát triển:**
-    - **Lời thoại:** "Dự án này là một nền tảng vững chắc và có thể được mở rộng hơn nữa, ví dụ như: tự động cập nhật public key của Keycloak bằng JWKS để thích ứng với việc xoay vòng khóa; hay quản lý các thông tin nhạy cảm bằng file .env để sẵn sàng cho môi trường production."
-- **Lời thoại cuối:** "Phần trình bày của em đến đây là kết thúc. Em xin cảm ơn thầy đã lắng nghe và rất mong nhận được câu hỏi và góp ý ạ."
-
-#### **Slide 9: Q&A (Phần Chuẩn Bị Thêm)**
-- Hãy chuẩn bị câu trả lời cho các câu hỏi có thể được hỏi:
-    - *Tại sao em chọn Kong mà không phải một gateway khác (NGINX, Traefik)?* (Gợi ý: Kong có hệ sinh thái plugin mạnh mẽ, dễ cấu hình DB-less, được cộng đồng hỗ trợ tốt).
-    - *Mô hình Hybrid này có nhược điểm gì?* (Gợi ý: Độ trễ mạng giữa local và VPS, phụ thuộc vào kết nối Internet).
-    - *Làm thế nào để bảo mật kết nối giữa máy local và VPS?* (Gợi ý: Sử dụng VPN, hoặc cấu hình Security Group chỉ cho phép IP của máy local truy cập).
+- **Câu hỏi:** *Làm thế nào để bảo mật kết nối giữa máy local và VPS?*
+  - **Gợi ý trả lời:** Để tăng cường bảo mật, có thể áp dụng các giải pháp như thiết lập một mạng riêng ảo (VPN) giữa hai máy, hoặc cấu hình Security Group trên VPS để chỉ cho phép duy nhất địa chỉ IP của máy local được phép kết nối vào các cổng dịch vụ.
 
 ---
 
