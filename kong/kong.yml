@@ -26,10 +26,10 @@ plugins:
       method: "POST"
       timeout: 10000
       keepalive: 60000
-      flush_timeout: 5
       queue:
         max_batch_size: 10
         max_retry_time: 60
+        max_coalescing_delay: 5
 
 services:
   # Login Service - Public endpoint with rate limiting and schema validation
