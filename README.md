@@ -17,39 +17,63 @@ Ngày nay, API là xương sống của hầu hết các ứng dụng hiện đ�
 
 Để tối ưu hiệu năng và mô phỏng môi trường triển khai thực tế, dự án được triển khai theo mô hình **Hybrid**:
 - **Máy chủ VPS (Từ xa):** Chạy các dịch vụ "nặng" như Keycloak, User Service và bộ ELK Stack.
-- **Máy Local (Máy thật):** Chỉ chạy thành phần nhẹ là Kong API Gateway, đóng vai trò là cổng vào duy nhất.
+- **Máy Local (Máy thật):** Chỉ chạy thành phần nhẹ là Kong API Gateway, đóng vai trò là cổng vào duy nhất cho mọi request từ client.
 
 ```mermaid
-graph LR
-    subgraph "Máy Local (Của Bạn)"
-        A[User / Postman / k6] --> B[Kong API Gateway];
-    end
-
-    subgraph "Máy chủ VPS (Từ xa)"
-        C[Keycloak];
-        D[NestJS User Service];
-        E[Logstash];
-        F[Elasticsearch];
-        G[Kibana];
-    end
-
-    B -- "Gửi request qua Internet" --> D;
-    B -- "Xác thực token" --> C;
-    B -- "Gửi log" --> E;
-    E --> F;
-    F --> G;
+flowchart TB
+  subgraph local["Máy Local"]
+    Client[Client/Postman/k6]
+    Kong[Kong Gateway :8000]
+  end
+  
+  subgraph vps["VPS Từ Xa - 47.129.40.37"]
+    UserSvc[User Service :3000]
+    KC[Keycloak :8080]
+    LS[Logstash :5044]
+    ES[Elasticsearch :9200]
+    Kibana[Kibana :5601]
+  end
+  
+  Client -->|1. POST /auth/login| Kong
+  Kong -->|2. Proxy request| UserSvc
+  UserSvc -->|3. Lấy token| KC
+  KC -->|4. Trả access_token| UserSvc
+  UserSvc -->|5. Trả token| Kong
+  Kong -->|6. Trả token| Client
+  
+  Client -->|7. GET /api/me + Bearer token| Kong
+  Kong -->|8. Xác thực JWT| KC
+  KC -->|9. Public key| Kong
+  Kong -->|10. Proxy nếu hợp lệ| UserSvc
+  
+  Kong -.->|Gửi log mọi request| LS
+  LS --> ES
+  ES --> Kibana
+  
+  style local fill:#e1f5ff
+  style vps fill:#fff4e1
+  style Kong fill:#00C7B7
+  style KC fill:#f0f0f0
+  style UserSvc fill:#4CAF50
 ```
+
+### Luồng Xác Thực Chi Tiết
+Đây là luồng hoạt động chuẩn của hệ thống sau khi đã được tinh chỉnh:
+1.  **Đăng nhập:** Client gửi `username` & `password` đến Kong. Kong chuyển tiếp đến `usersvc`.
+2.  **Lấy Token:** `usersvc` **không tự tạo token**. Thay vào đó, nó dùng thông tin đăng nhập để gọi đến Keycloak và nhận về một `access_token` hợp lệ.
+3.  **Trả Token:** `usersvc` trả `access_token` (do Keycloak cấp) về cho client.
+4.  **Truy cập API:** Client dùng token này để gọi các API được bảo vệ. Kong sẽ xác thực token này với public key của Keycloak, đảm bảo `iss` (issuer) luôn hợp lệ.
 
 ---
 
 ## 3. Các Lớp Bảo Mật Chính
 
 - **🛡️ Lớp 1: Gateway (Kong)**
-  - **Xác thực JWT:** Kiểm tra chữ ký và thời hạn của token do Keycloak cấp.
-  - **Chống Brute-Force:** Áp dụng Rate Limiting (giới hạn 5 request/giây) trên endpoint đăng nhập.
-  - **Validation Payload:** Dùng script Lua để kiểm tra cấu trúc và định dạng dữ liệu đầu vào.
+  - **Xác thực JWT:** Đảm bảo mọi request đến các API được bảo vệ phải có token hợp lệ do Keycloak phát hành. Kong sẽ kiểm tra chữ ký và thời hạn của token.
+  - **Chống Brute-Force:** Áp dụng Rate Limiting (giới hạn 5 request/giây) trên endpoint đăng nhập để chống tấn công "vét cạn".
+  - **Validation Payload:** Dùng script Lua để kiểm tra cấu trúc và định dạng dữ liệu đầu vào ngay tại gateway, trước khi request chạm tới backend.
 - **📈 Lớp 2: Giám Sát (ELK Stack)**
-  - **Logging Tập Trung:** Mọi request đi qua Kong đều được ghi log và đẩy về Logstash.
+  - **Logging Tập Trung:** Mọi request đi qua Kong (thành công hay thất bại) đều được ghi log và đẩy về Logstash qua cổng `5044`.
   - **Làm giàu Dữ liệu:** Logstash xử lý, trích xuất thông tin quan trọng (status, IP, latency) và thêm dữ liệu vị trí địa lý (GeoIP).
   - **Trực quan hóa:** Kibana cung cấp giao diện để tìm kiếm, lọc và tạo biểu đồ từ log, giúp phát hiện tấn công trong thời gian thực.
 
@@ -59,15 +83,14 @@ graph LR
 
 ### Bước 1: Cài Đặt Trên Máy Chủ VPS
 Đây là nơi chạy các dịch vụ backend.
-> 📖 **Lưu ý:** Để có hướng dẫn chi tiết từng lệnh, vui lòng xem file **[SETUP_REMOTE_INFRA.md](./SETUP_REMOTE_INFRA.md)**.
 
-1.  **Chuẩn bị VPS:** Chuẩn bị một máy chủ Ubuntu và mở các cổng `3000`, `8080`, `8081`, `9200`, `5601`.
+1.  **Chuẩn bị VPS:** Chuẩn bị một máy chủ Ubuntu và mở các cổng `3000`, `8080`, `8081`, `9200`, `5601`, và `5044`.
 2.  **Cài Docker & Tải Mã Nguồn:** Cài đặt Docker, Docker Compose và clone repository này về VPS.
-3.  **Khởi chạy Dịch Vụ Nền:** Chạy lệnh sau trên VPS để khởi động tất cả các service **TRỪ KONG**:
+3.  **Khởi chạy Dịch Vụ Nền:** Chạy lệnh sau trên VPS để khởi động tất cả các dịch vụ backend:
     ```bash
-    docker compose up -d usersvc keycloak keycloak-db logstash elasticsearch kibana
+    docker compose up -d
     ```
-4.  **Kiểm Tra:** Dùng `docker compose ps` để đảm bảo tất cả các service đã `healthy`. Ghi lại địa chỉ **IP Public của VPS**.
+4.  **Kiểm Tra:** Dùng `docker compose ps` để đảm bảo tất cả các service (usersvc, keycloak, elasticsearch,...) đã `healthy`. Ghi lại địa chỉ **IP Public của VPS**.
 
 ### Bước 2: Cài Đặt Trên Máy Local
 Đây là nơi chỉ chạy Kong API Gateway.
@@ -75,13 +98,14 @@ graph LR
 1.  **Cấu hình Kong:** Mở file `kong/kong.yml`. Tìm và thay thế tất cả các địa chỉ IP cũ bằng **IP Public của VPS** của bạn.
 2.  **Khởi chạy Kong:** Sử dụng file `docker-compose.kong-only.yml`:
     ```bash
-    docker compose -f docker-compose.kong-only.yml up -d --build
+    docker compose -f docker-compose.kong-only.yml up -d --force-recreate
     ```
+    *(Sử dụng `--force-recreate` để đảm bảo Kong luôn áp dụng cấu hình mới nhất từ `kong.yml`)*.
 
 ### Bước 3: Kiểm Thử Với Postman
 > 📖 **Lưu ý:** Để có hướng dẫn chi tiết từng bước trên Postman, vui lòng xem file **[POSTMAN_TESTING_GUIDE.md](./POSTMAN_TESTING_GUIDE.md)**.
 
-1.  **Đăng nhập thành công:** Gửi request `POST` đến `http://localhost:8000/auth/login` với `username` và `password` để nhận `access_token`.
+1.  **Đăng nhập thành công:** Gửi request `POST` đến `http://localhost:8000/auth/login` với `username` và `password` để nhận `access_token` do Keycloak cấp.
 2.  **Truy cập API được bảo vệ:** Gửi request `GET` đến `http://localhost:8000/api/me` với `Authorization: Bearer <token>` để lấy thông tin người dùng.
 
 ---
@@ -99,15 +123,15 @@ graph LR
 - **Kịch bản 3: Giám Sát Tấn Công Trên Kibana**
   - **Hành động:** Truy cập Kibana trên VPS (`http://<IP_VPS>:5601`).
   - **Kết quả:**
-    - Vào **Discover**, bạn có thể tìm kiếm và lọc các log có `event.status: 429` để thấy chính xác các request đã bị chặn bởi Rate Limiting.
+    - Vào **Discover**, bạn có thể tìm kiếm và lọc các log có `http.response.status_code: 429` để thấy chính xác các request đã bị chặn bởi Rate Limiting.
     - Bạn có thể tạo biểu đồ để trực quan hóa tỷ lệ các loại lỗi.
-  > 📖 **Lưu ý:** Để có hướng dẫn chi tiết về cách tạo Data View và Visualize, vui lòng xem file **[KIBANA_GUIDE.md](./KIBANA_GUIDE.md)**.
+  > 📖 **Lưu ý:** Để có hướng dẫn chi tiết về cách tạo Data View và Visualize, vui lòng xem file **[POSTMAN_KIBANA_GUIDE.md](./POSTMAN_KIBANA_GUIDE.md)**.
 
 ---
 
 ## 6. Tài Liệu Tham Khảo Thêm
 
-- **[PROJECT_GUIDE.md](./PROJECT_GUIDE.md):** Cẩm nang toàn diện nhất, bao gồm kịch bản thuyết trình chi tiết.
-- **[SETUP_REMOTE_INFRA.md](./SETUP_REMOTE_INFRA.md):** Hướng dẫn cài đặt VPS.
+- **[FINAL_CHECKLIST.md](./FINAL_CHECKLIST.md):** Checklist cuối cùng trước khi báo cáo.
+- **[HUONG_DAN_CHAY_PROJECT.md](./HUONG_DAN_CHAY_PROJECT.md):** Hướng dẫn vận hành tóm tắt.
 - **[POSTMAN_TESTING_GUIDE.md](./POSTMAN_TESTING_GUIDE.md):** Hướng dẫn kiểm thử bằng Postman.
-- **[KIBANA_GUIDE.md](./KIBANA_GUIDE.md):** Hướng dẫn sử dụng Kibana.
+- **[POSTMAN_KIBANA_GUIDE.md](./POSTMAN_KIBANA_GUIDE.md):** Hướng dẫn sử dụng Kibana.
