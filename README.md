@@ -26,7 +26,7 @@ flowchart LR
     end
 
     subgraph "Máy chủ VPS (Từ xa)"
-        C[Keycloak OIDC]
+        C[Keycloak (Identity Provider)]
         D[NestJS User Service]
         E[Logstash]
         F[Elasticsearch]
