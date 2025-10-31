@@ -124,7 +124,7 @@ Hệ thống của bạn giờ đã sẵn sàng: Gateway chạy ở local, lắn
 
 ---
 
-## Phần 3: Kịch Bản Demo Siêu Chi Tiết (Mô Hình Hybrid)
+## Phần 3: Kịch Bản Demo (Mô Hình Hybrid)
 
 Đây là kịch bản từng câu từng chữ để bạn có thể thực hành và trình bày một cách trôi chảy.
 
@@ -195,92 +195,6 @@ Hệ thống của bạn giờ đã sẵn sàng: Gateway chạy ở local, lắn
 
 - **Câu hỏi:** *Làm thế nào để bảo mật kết nối giữa máy local và VPS?*
   - **Gợi ý trả lời:** Để tăng cường bảo mật, có thể áp dụng các giải pháp như thiết lập một mạng riêng ảo (VPN) giữa hai máy, hoặc cấu hình Security Group trên VPS để chỉ cho phép duy nhất địa chỉ IP của máy local được phép kết nối vào các cổng dịch vụ.
-
----
-
-## Phần 5: Xử Lý Sự Cố Thường Gặp
-
-### Sự cố: Đăng nhập thất bại với tài khoản `demo/demo123`
-
-**Triệu chứng:** Khi thực hiện demo, bạn gửi request đăng nhập và nhận lại lỗi `401 Unauthorized` mặc dù đã sử dụng đúng mật khẩu `demo123`.
-
-**Nguyên nhân:** Đôi khi, quá trình import realm ban đầu của Keycloak có thể không thành công hoàn toàn, hoặc trạng thái của người dùng `demo` bị thay đổi (ví dụ: bị khóa tạm thời, yêu cầu đổi mật khẩu).
-
-**Giải pháp:** Chạy lại kịch bản tạo và đặt lại mật khẩu cho người dùng `demo` trực tiếp trên VPS. Kịch bản này an toàn để chạy lại nhiều lần.
-
-1.  **SSH vào VPS của bạn.**
-2.  **Chạy toàn bộ khối lệnh sau:**
-    ```bash
-    # Lấy admin token của Keycloak
-    ADMIN_TOKEN=$(curl -s -X POST "http://localhost:8080/realms/master/protocol/openid-connect/token" \
-      -H 'Content-Type: application/x-www-form-urlencoded' \
-      -d 'username=admin&password=admin&grant_type=password&client_id=admin-cli' | jq -r .access_token)
-
-    # Tạo user "demo" nếu chưa tồn tại (bỏ qua lỗi nếu đã có)
-    curl -s -o /dev/null -w '' -X POST "http://localhost:8080/admin/realms/demo/users" \
-      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-      -d '{"username":"demo","firstName":"Demo","lastName":"User","email":"demo@example.com","enabled":true}' || true
-
-    # Lấy USER_ID của user "demo"
-    USER_ID=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" \
-      "http://localhost:8080/admin/realms/demo/users?username=demo" | jq -r '.[0].id')
-
-    # Cập nhật trạng thái user: bật tài khoản, xác thực email
-    curl -s -X PUT "http://localhost:8080/admin/realms/demo/users/$USER_ID" \
-      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-      -d '{"firstName":"Demo","lastName":"User","email":"demo@example.com","emailVerified":true,"enabled":true,"requiredActions":[]}'
-
-    # Đặt lại mật khẩu thành "demo123"
-    curl -s -X PUT "http://localhost:8080/admin/realms/demo/users/$USER_ID/reset-password" \
-      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-      -d '{"type":"password","temporary":false,"value":"demo123"}'
-    
-    echo "Hoàn tất! Tài khoản demo đã được đặt lại."
-    ```
-3.  **Thử lại:** Sau khi chạy xong, hãy thử lại thao tác đăng nhập trên Postman. Lần này nó sẽ thành công.
-
----
-
-## Phần 5: Xử Lý Sự Cố Thường Gặp
-
-### Sự cố: Đăng nhập thất bại với tài khoản `demo/demo123`
-
-**Triệu chứng:** Khi thực hiện demo, bạn gửi request đăng nhập và nhận lại lỗi `401 Unauthorized` mặc dù đã sử dụng đúng mật khẩu `demo123`.
-
-**Nguyên nhân:** Đôi khi, quá trình import realm ban đầu của Keycloak có thể không thành công hoàn toàn, hoặc trạng thái của người dùng `demo` bị thay đổi (ví dụ: bị khóa tạm thời, yêu cầu đổi mật khẩu).
-
-**Giải pháp:** Chạy lại kịch bản tạo và đặt lại mật khẩu cho người dùng `demo` trực tiếp trên VPS. Kịch bản này an toàn để chạy lại nhiều lần.
-
-1.  **SSH vào VPS của bạn.**
-2.  **Chạy toàn bộ khối lệnh sau:**
-    ```bash
-    # Lấy admin token của Keycloak
-    ADMIN_TOKEN=$(curl -s -X POST "http://localhost:8080/realms/master/protocol/openid-connect/token" \
-      -H 'Content-Type: application/x-www-form-urlencoded' \
-      -d 'username=admin&password=admin&grant_type=password&client_id=admin-cli' | jq -r .access_token)
-
-    # Tạo user "demo" nếu chưa tồn tại (bỏ qua lỗi nếu đã có)
-    curl -s -o /dev/null -w '' -X POST "http://localhost:8080/admin/realms/demo/users" \
-      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-      -d '{"username":"demo","firstName":"Demo","lastName":"User","email":"demo@example.com","enabled":true}' || true
-
-    # Lấy USER_ID của user "demo"
-    USER_ID=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" \
-      "http://localhost:8080/admin/realms/demo/users?username=demo" | jq -r '.[0].id')
-
-    # Cập nhật trạng thái user: bật tài khoản, xác thực email
-    curl -s -X PUT "http://localhost:8080/admin/realms/demo/users/$USER_ID" \
-      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-      -d '{"firstName":"Demo","lastName":"User","email":"demo@example.com","emailVerified":true,"enabled":true,"requiredActions":[]}'
-
-    # Đặt lại mật khẩu thành "demo123"
-    curl -s -X PUT "http://localhost:8080/admin/realms/demo/users/$USER_ID/reset-password" \
-      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-      -d '{"type":"password","temporary":false,"value":"demo123"}'
-    
-    echo "Hoàn tất! Tài khoản demo đã được đặt lại."
-    ```
-3.  **Thử lại:** Sau khi chạy xong, hãy thử lại thao tác đăng nhập trên Postman. Lần này nó sẽ thành công.
 
 ---
 
