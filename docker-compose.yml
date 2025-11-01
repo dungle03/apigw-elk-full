@@ -63,7 +63,7 @@ services:
       KC_DB_PASSWORD: keycloak
       KC_BOOTSTRAP_ADMIN_USERNAME: admin # biến mới (không deprecated)
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      KC_HOSTNAME: 47.129.40.37 # IP public của VPS
+      KC_HOSTNAME: 18.136.195.180 # IP public của VPS
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
