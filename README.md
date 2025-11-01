@@ -21,40 +21,53 @@ Ngày nay, API là xương sống của hầu hết các ứng dụng hiện đ�
 
 ```mermaid
 flowchart TB
-  subgraph local["Máy Local"]
-    Client[Client/Postman/k6]
-    Kong[Kong Gateway :8000]
+  subgraph "Client"
+    direction LR
+    User[User/Client]
   end
-  
-  subgraph vps["VPS Từ Xa - 47.129.40.37"]
-    UserSvc[User Service :3000]
-    KC[Keycloak :8080]
-    LS[Logstash :5044]
-    ES[Elasticsearch :9200]
-    Kibana[Kibana :5601]
+
+  subgraph "Local Machine"
+    direction LR
+    subgraph Kong_API_Gateway [Kong API Gateway]
+        direction TB
+        RateLimit[Rate Limiting Plugin]
+        JWT[JWT Plugin]
+        Logging[Logging Plugin]
+    end
   end
-  
-  Client -->|1. POST /auth/login| Kong
-  Kong -->|2. Proxy request| UserSvc
-  UserSvc -->|3. Lấy token| KC
-  KC -->|4. Trả access_token| UserSvc
-  UserSvc -->|5. Trả token| Kong
-  Kong -->|6. Trả token| Client
-  
-  Client -->|7. GET /api/me + Bearer token| Kong
-  Kong -->|8. Xác thực JWT| KC
-  KC -->|9. Public key| Kong
-  Kong -->|10. Proxy nếu hợp lệ| UserSvc
-  
-  Kong -.->|Gửi log mọi request| LS
-  LS --> ES
-  ES --> Kibana
-  
-  style local fill:#e1f5ff
-  style vps fill:#fff4e1
-  style Kong fill:#00C7B7
-  style KC fill:#f0f0f0
-  style UserSvc fill:#4CAF50
+
+  subgraph "Remote VPS"
+    direction LR
+    subgraph ELK_Stack [ELK Stack]
+        direction TB
+        Logstash
+        Elasticsearch
+        Kibana
+    end
+    subgraph Services
+        direction TB
+        UserService[User Service]
+        Keycloak
+    end
+  end
+
+  User -- "1. /auth/login" --> Kong_API_Gateway
+  Kong_API_Gateway -- "2. Forward" --> UserService
+  UserService -- "3. Validate & Get Token" --> Keycloak
+  Keycloak -- "4. Return Token" --> UserService
+  UserService -- "5. Return Token" --> Kong_API_Gateway
+  Kong_API_Gateway -- "6. Return Token" --> User
+
+  User -- "7. /api/me (with token)" --> Kong_API_Gateway
+  Kong_API_Gateway -- "8. Validate Token" --> JWT
+  JWT -- "9. Valid" --> UserService
+  UserService -- "10. Return Data" --> Kong_API_Gateway
+  Kong_API_Gateway -- "11. Return Data" --> User
+
+  Kong_API_Gateway -- "All Requests" --> Logging
+  Logging -- "Send Logs" --> Logstash
+  Logstash -- "Process & Send" --> Elasticsearch
+  Elasticsearch -- "Index" --> Kibana
 ```
 
 ### Luồng Xác Thực Chi Tiết
