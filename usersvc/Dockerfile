@@ -1,6 +1,6 @@
 # ---- Stage 1: Build ----
 # Sử dụng image node đầy đủ để build
-FROM node:20 as builder
+FROM node:20-alpine as builder
 
 WORKDIR /app
 
