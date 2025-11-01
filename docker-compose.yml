@@ -66,6 +66,8 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
+      # Thêm dòng JAVA_OPTS_APPEND này
+      JAVA_OPTS_APPEND: "-Dkeycloak.require.ssl=none"
       JAVA_OPTS: "-Xms256m -Xmx512m"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm.json:ro
