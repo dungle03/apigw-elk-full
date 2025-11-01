@@ -9,14 +9,14 @@ consumers:
         algorithm: RS256
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----
-          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvJCXzONTo7xpT5/fFSU2
-          x+9OdAkxBw6rHVzgaIPlBbFOLevZdWlKqefxFZELM3np9vPbsGWRHn1BQsQlxpr8
-          uyjDoM2jAu68sVfo9qiZBnTZNkvNPr4o1yJzZQExyK4N8zw+4B6gIX2UTCibYMcJ
-          AunwkhprlxrYZp2QrVdlIo/d3lnkb8TDdB3koKMOUE+Nqau03t18c6Hr6qz2MyO+
-          Mg8LfkmAKHupw1njWq72ToCByw9AUMSFPbbfDZKfcBTbcDHwEO8At7KHSnhSAC7n
-          IgaN3bWiv1GYOoPfuyGjSVm2ca9Vle01tO3Tf6DC5qvFU95D00Xn4OpHxqsOzkE+
-          7wIDAQAB
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmsZ4kh6BgkjhxcVSg8Sh+GbXvzIpyHNC
+          v1OUu20bLbBj8+0fa+H45Am2aqf52OyuCNVW/4bIX/xpLvHsBgotMSzSHApAO5eBg65Lfo1gidf7
+          fnruv9g7Hvw2UDdzeE0I9IfH0vy2+BzkveLTFMtVB/qYwpK1wKehZO4KcBODkuj9Icg9HpUFpgqw
+          gCS72IzK4i1wRFvk8CvLxlqyeidYocw90SJsckUECmYuRvEB/auAzsYn7Gv2lFkLmZpJKIYFJKnH
+          vHqw2ERqZvR5wnG0bb8GVt+kc1gpqUOvBMtp8hSIS0+XEsm1a+wzf9XVFDC3cKNuOXfAWItLSkI1
+          KShtcwIDAQAB
           -----END PUBLIC KEY-----
+        
 
 # Global Plugins
 plugins:
@@ -69,7 +69,7 @@ services:
           # Request Size Limiting
           - name: request-size-limiting
             config:
-              allowed_payload_size: 1
+              allowed_payload_size: 128
 
   # Protected API Service - Requires JWT Authentication
   - name: user-service
