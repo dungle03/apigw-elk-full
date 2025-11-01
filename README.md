@@ -20,54 +20,34 @@ Ngày nay, API là xương sống của hầu hết các ứng dụng hiện đ�
 - **Máy Local (Máy thật):** Chỉ chạy thành phần nhẹ là Kong API Gateway, đóng vai trò là cổng vào duy nhất cho mọi request từ client.
 
 ```mermaid
-flowchart TB
-  subgraph "Client"
-    direction LR
-    User[User/Client]
-  end
-
-  subgraph "Local Machine"
-    direction LR
-    subgraph Kong_API_Gateway [Kong API Gateway]
-        direction TB
-        RateLimit[Rate Limiting Plugin]
-        JWT[JWT Plugin]
-        Logging[Logging Plugin]
+flowchart TD
+    subgraph "Client"
+        User[Client]
     end
-  end
 
-  subgraph "Remote VPS"
-    direction LR
-    subgraph ELK_Stack [ELK Stack]
-        direction TB
+    subgraph "API Gateway (Kong)"
+        direction LR
+        RateLimit[Rate Limiting]
+        JWT[JWT Validation]
+        Logging[Logging]
+    end
+
+    subgraph "Backend Services"
+        UserService[User Service]
+        Keycloak[Keycloak]
+    end
+
+    subgraph "Monitoring (ELK)"
         Logstash
         Elasticsearch
         Kibana
     end
-    subgraph Services
-        direction TB
-        UserService[User Service]
-        Keycloak
-    end
-  end
 
-  User -- "1. /auth/login" --> Kong_API_Gateway
-  Kong_API_Gateway -- "2. Forward" --> UserService
-  UserService -- "3. Validate & Get Token" --> Keycloak
-  Keycloak -- "4. Return Token" --> UserService
-  UserService -- "5. Return Token" --> Kong_API_Gateway
-  Kong_API_Gateway -- "6. Return Token" --> User
-
-  User -- "7. /api/me (with token)" --> Kong_API_Gateway
-  Kong_API_Gateway -- "8. Validate Token" --> JWT
-  JWT -- "9. Valid" --> UserService
-  UserService -- "10. Return Data" --> Kong_API_Gateway
-  Kong_API_Gateway -- "11. Return Data" --> User
-
-  Kong_API_Gateway -- "All Requests" --> Logging
-  Logging -- "Send Logs" --> Logstash
-  Logstash -- "Process & Send" --> Elasticsearch
-  Elasticsearch -- "Index" --> Kibana
+    User -->|"Request"| API_Gateway
+    API_Gateway -->|"Forward"| Backend_Services
+    Backend_Services -->|"Response"| API_Gateway
+    API_Gateway -->|"Response"| User
+    API_Gateway -->|"Logs"| Monitoring
 ```
 
 ### Luồng Xác Thực Chi Tiết
