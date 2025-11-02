@@ -77,7 +77,7 @@ Mô hình này yêu cầu cài đặt ở cả hai nơi: VPS và máy local. Hã
 4.  **Kiểm Tra Trạng Thái (Rất Quan Trọng):**
     *   Chờ khoảng 1-2 phút cho các dịch vụ khởi động.
     *   Chạy lệnh `docker compose ps` và kiểm tra cột `STATUS`. Tất cả các service phải có trạng thái `running (healthy)`. Nếu một service nào đó không `healthy`, hãy kiểm tra log của nó bằng `docker compose logs -f <tên_service>`.
-    *   Ghi lại địa chỉ **IP Public của VPS** (ví dụ: `18.136.195.180`).
+  *   Ghi lại địa chỉ **IP Public của VPS** (ví dụ: `13.250.36.84`).
 
 ### 2.2. Bước 2: Cài Đặt Trên Máy Local (API Gateway)
 
@@ -86,25 +86,25 @@ Mô hình này yêu cầu cài đặt ở cả hai nơi: VPS và máy local. Hã
 1.  **Cấu Hình Kết Nối Đến VPS:**
     *   Mở file `kong/kong.yml` trên máy local.
     *   Đây là bước quan trọng nhất: **Thay thế tất cả các địa chỉ IP cũ bằng IP Public của VPS**.
-    *   **Ví dụ:** Nếu IP của VPS là `18.136.195.180`, bạn cần sửa:
+  *   **Ví dụ:** Nếu IP của VPS là `13.250.36.84`, bạn cần sửa:
         ```yaml
         # Thay thế phần này
         consumers:
           - username: keycloak-issuer
             jwt_secrets:
-              - key: "http://18.136.195.180:8080/realms/demo" # <--- SỬA Ở ĐÂY
+              - key: "http://13.250.36.84:8080/realms/demo" # <--- SỬA Ở ĐÂY
         # ...
         plugins:
           - name: http-log
             config:
-              http_endpoint: "http://18.136.195.180:8081/kong" # <--- SỬA Ở ĐÂY
+              http_endpoint: "http://13.250.36.84:8081/kong" # <--- SỬA Ở ĐÂY
         # ...
         services:
           - name: auth-service
-            url: http://18.136.195.180:3000 # <--- SỬA Ở ĐÂY
+            url: http://13.250.36.84:3000 # <--- SỬA Ở ĐÂY
           # ...
           - name: user-service
-            url: http://18.136.195.180:3000 # <--- SỬA Ở ĐÂY
+            url: http://13.250.36.84:3000 # <--- SỬA Ở ĐÂY
         ```
 2.  **Khởi Chạy Kong:**
     *   Sử dụng file `docker-compose.kong-only.yml` được thiết kế riêng để chỉ chạy Kong:
@@ -166,7 +166,7 @@ Hệ thống của bạn giờ đã sẵn sàng: Gateway chạy ở local, lắn
     4.  **Lời thoại:** "Request này đã bị từ chối ngay tại Gateway trên máy local vì không đáp ứng đúng định dạng, không bao giờ chạm tới được service nghiệp vụ trên VPS."
 
 *   **Kịch bản 4: Giám Sát Tập Trung - "Đôi Mắt Thần"**
-    1.  **Hành động:** Chuyển sang cửa sổ trình duyệt đang mở Kibana tại `http://18.136.195.180:5601`.
+  1.  **Hành động:** Chuyển sang cửa sổ trình duyệt đang mở Kibana tại `http://13.250.36.84:5601`.
     2.  **Lời thoại:** "Và phần hay nhất là: mọi hoạt động vừa rồi, dù thành công hay thất bại, dù diễn ra ở local hay VPS, đều được ghi lại và phân tích tại một nơi duy nhất."
     3.  **Hành động:**
         *   Vào menu **Analytics > Discover**. Bấm **Refresh**.

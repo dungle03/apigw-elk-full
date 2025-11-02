@@ -29,7 +29,7 @@ services:
     build: ./usersvc
     ports: [ "3000:3000" ]
     environment:
-      KEYCLOAK_REALM_URL: http://18.136.195.180:8080/realms/demo
+      KEYCLOAK_REALM_URL: http://13.250.36.84:8080/realms/demo
     deploy:
       resources:
         limits:
@@ -63,7 +63,7 @@ services:
       KC_DB_PASSWORD: keycloak
       KC_BOOTSTRAP_ADMIN_USERNAME: admin # biến mới (không deprecated)
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      KC_HOSTNAME: 18.136.195.180 # IP public của VPS
+  KC_HOSTNAME: 13.250.36.84 # IP public của VPS
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"

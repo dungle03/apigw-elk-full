@@ -11,14 +11,14 @@
 
 .PARAMETER RealmUrl
     The base URL of the Keycloak realm.
-    Example: http://18.136.195.180:8080/realms/demo
+    Example: http://13.250.36.84:8080/realms/demo
 
 .EXAMPLE
-    .\Get-Keycloak-PEM.ps1 -RealmUrl http://18.136.195.180:8080/realms/demo
+    .\Get-Keycloak-PEM.ps1 -RealmUrl http://13.250.36.84:8080/realms/demo
 #>
 param(
     [Parameter(Mandatory=$false)]
-    [string]$RealmUrl = "http://18.136.195.180:8080/realms/demo"
+    [string]$RealmUrl = "http://13.250.36.84:8080/realms/demo"
 )
 
 # Helper function to convert from Base64Url to a standard Base64 string
