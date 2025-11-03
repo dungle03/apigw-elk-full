@@ -75,7 +75,9 @@ flowchart TD
 ## 4. Hướng Dẫn Cài Đặt và Vận Hành
 
 ### Cấu hình IP dùng chung (mới)
-- Sửa IP một nơi duy nhất: file `.env` ở thư mục gốc, biến `PUBLIC_IP`.
+- Tạo file `.env` từ mẫu:
+  - Sao chép `.env.example` thành `.env` và cập nhật biến `PUBLIC_IP`.
+  - `PUBLIC_IP` là IP public hoặc domain của VPS (không kèm http/https). Ví dụ: `13.250.36.84` hoặc `api.example.com`.
 - Trước khi chạy Kong, render cấu hình từ template:
   - PowerShell: chạy `scripts/render-kong.ps1` để tạo `kong/kong.yml` từ `kong/kong.yml.tmpl` bằng IP trong `.env`.
   - `docker-compose.yml` đã tham chiếu `${PUBLIC_IP}` cho `KEYCLOAK_REALM_URL` và `KC_HOSTNAME`.
