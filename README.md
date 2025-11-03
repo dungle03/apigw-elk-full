@@ -74,6 +74,18 @@ flowchart TD
 
 ## 4. Hướng Dẫn Cài Đặt và Vận Hành
 
+### Cấu hình IP dùng chung (mới)
+- Sửa IP một nơi duy nhất: file `.env` ở thư mục gốc, biến `PUBLIC_IP`.
+- Trước khi chạy Kong, render cấu hình từ template:
+  - PowerShell: chạy `scripts/render-kong.ps1` để tạo `kong/kong.yml` từ `kong/kong.yml.tmpl` bằng IP trong `.env`.
+  - `docker-compose.yml` đã tham chiếu `${PUBLIC_IP}` cho `KEYCLOAK_REALM_URL` và `KC_HOSTNAME`.
+
+- Lệnh chạy powershell:
+  ```powershell
+  # Chạy trong PowerShell ở thư mục gốc của dự án
+  pwsh -NoProfile -ExecutionPolicy Bypass -File "scripts\render-kong.ps1"
+  ```
+
 ### Bước 1: Cài Đặt Trên Máy Chủ VPS
 Đây là nơi chạy các dịch vụ backend.
 
@@ -88,8 +100,9 @@ flowchart TD
 ### Bước 2: Cài Đặt Trên Máy Local
 Đây là nơi chỉ chạy Kong API Gateway.
 
-1.  **Cấu hình Kong:** Mở file `kong/kong.yml`. Tìm và thay thế tất cả các địa chỉ IP cũ bằng **IP Public của VPS** của bạn.
-2.  **Khởi chạy Kong:** Sử dụng file `docker-compose.kong-only.yml`:
+1.  **Đặt IP một lần:** Sửa `PUBLIC_IP` trong file `.env` ở thư mục gốc.
+2.  **Render cấu hình Kong:** Chạy script PowerShell `scripts/render-kong.ps1` để sinh `kong/kong.yml` từ template.
+3.  **Khởi chạy Kong:** Sử dụng file `docker-compose.kong-only.yml`:
     ```bash
     docker compose -f docker-compose.kong-only.yml up -d --force-recreate
     ```

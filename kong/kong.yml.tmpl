@@ -5,7 +5,7 @@ _transform: true
 consumers:
   - username: keycloak-issuer
     jwt_secrets:
-      - key: "http://54.179.69.194:8080/realms/demo"
+      - key: "http://${PUBLIC_IP}:8080/realms/demo"
         algorithm: RS256
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----
@@ -16,7 +16,7 @@ consumers:
 plugins:
   - name: http-log
     config:
-      http_endpoint: "http://54.179.69.194:8081/kong"
+      http_endpoint: "http://${PUBLIC_IP}:8081/kong"
       method: POST
       timeout: 10000
       keepalive: 60000
@@ -28,7 +28,7 @@ plugins:
 services:
   # Login Service - Public endpoint
   - name: auth-service
-    url: http://54.179.69.194:3000
+    url: http://${PUBLIC_IP}:3000
     routes:
       - name: auth-route
         paths: ["/auth/login"]
@@ -64,7 +64,7 @@ services:
 
   # Protected API Service - Requires JWT Authentication
   - name: user-service
-    url: http://54.179.69.194:3000
+    url: http://${PUBLIC_IP}:3000
     routes:
       - name: user-route
         paths: ["/api"]
