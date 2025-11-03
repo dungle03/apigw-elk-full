@@ -82,10 +82,36 @@ flowchart TD
   - PowerShell: chạy `scripts/render-kong.ps1` để tạo `kong/kong.yml` từ `kong/kong.yml.tmpl` bằng IP trong `.env`.
   - `docker-compose.yml` đã tham chiếu `${PUBLIC_IP}` cho `KEYCLOAK_REALM_URL` và `KC_HOSTNAME`.
 
+#### Script tiện ích (tùy chọn)
+- Có sẵn script hợp nhất thao tác: `scripts/update-kong.ps1`
+  - Chức năng: đảm bảo `.env` tồn tại (tự copy từ `.env.example` nếu thiếu hoặc tạo tối thiểu), tùy chọn đặt `PUBLIC_IP`, và render `kong/kong.yml`.
+  - Chạy mặc định (đảm bảo `.env` và render):
+    ```powershell
+    pwsh -File .\scripts\update-kong.ps1
+    ```
+  - Đặt IP trực tiếp và render (không cần mở file):
+    ```powershell
+    pwsh -File .\scripts\update-kong.ps1 -PublicIp 54.179.69.194
+    ```
+
+  - Linux/Ubuntu (bash) tương đương:
+    ```bash
+    # Đảm bảo .env và render
+    bash ./scripts/update-kong.sh
+
+    # Đặt IP trực tiếp và render
+    bash ./scripts/update-kong.sh --public-ip 54.179.69.194
+    ```
+
 - Lệnh chạy powershell:
   ```powershell
   # Chạy trong PowerShell ở thư mục gốc của dự án
-  pwsh -NoProfile -ExecutionPolicy Bypass -File "scripts\render-kong.ps1"
+  pwsh -NoProfile -ExecutionPolicy Bypass -File "scripts\update-kong.ps1"
+  ```
+
+  ```bash
+  # Chạy trên Ubuntu (bash) ở thư mục gốc của dự án
+  bash ./scripts/update-kong.sh
   ```
 
 ### Bước 1: Cài Đặt Trên Máy Chủ VPS
