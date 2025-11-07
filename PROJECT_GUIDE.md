@@ -68,24 +68,54 @@ Mô hình này yêu cầu cài đặt ở cả hai nơi: VPS và máy local. Hã
     *   **Quan trọng:** Mở các cổng `3000`, `8080`, `8081`, `9200`, `5601` trong Security Group (AWS) hoặc UFW (Firewall) để máy local có thể kết nối vào.
 2.  **Cài Docker & Tải Mã Nguồn:**
     *   Thực hiện các lệnh cài đặt Docker Engine, Docker Compose và clone repository về VPS.
-3.  **Khởi chạy Dịch Vụ Nền:**
+3.  **Khởi chạy Dịch Vụ Nền (KHÔNG chạy Kong trên VPS trong mô hình Hybrid):**
     *   Trên VPS, chạy lệnh sau để khởi động tất cả các service **TRỪ KONG**:
         ```bash
         # Lệnh chạy trên VPS
         docker compose up -d usersvc keycloak keycloak-db logstash elasticsearch kibana
         ```
-4.  **Kiểm Tra Trạng Thái (Rất Quan Trọng):**
+4.  **(Tuỳ chọn) Cập nhật PUBLIC_IP và render cấu hình Kong trên VPS bằng script `scripts/update-kong.sh`:**
+    *   Nếu IP Public của VPS thay đổi, hoặc bạn muốn tự động tạo/cập nhật file `.env` và `kong/kong.yml` trên VPS (phục vụ các kịch bản all-in-one hoặc đồng bộ cấu hình), có thể chạy:
+        ```bash
+        # Chạy trên VPS (Ubuntu) tại thư mục gốc repo
+        chmod +x scripts/update-kong.sh
+        ./scripts/update-kong.sh --public-ip <IP_VPS>
+        ```
+    *   Script này sẽ:
+        - Đảm bảo tồn tại file `.env` (từ `.env.example` hoặc tạo mới).
+        - Ghi/cập nhật biến `PUBLIC_IP` trong `.env` bằng `<IP_VPS>`.
+        - Gọi `scripts/render-kong.sh` để render lại `kong/kong.yml` từ template.
+    *   Lưu ý quan trọng:
+        - Trong mô hình Hybrid chính thức của đồ án, Kong chạy trên **máy local**, không chạy trên VPS.
+        - Việc dùng `scripts/update-kong.sh` trên VPS là tuỳ chọn, chủ yếu khi:
+          - Chạy Kong trực tiếp trên VPS (mô hình all-in-one), hoặc
+          - Cần giữ cấu hình `.env`/`kong.yml` trên VPS đồng bộ với IP Public.
+5.  **Kiểm Tra Trạng Thái (Rất Quan Trọng):**
     *   Chờ khoảng 1-2 phút cho các dịch vụ khởi động.
     *   Chạy lệnh `docker compose ps` và kiểm tra cột `STATUS`. Tất cả các service phải có trạng thái `running (healthy)`. Nếu một service nào đó không `healthy`, hãy kiểm tra log của nó bằng `docker compose logs -f <tên_service>`.
-  *   Ghi lại địa chỉ **IP Public của VPS** (ví dụ: `13.250.36.84`).
+6.  **Ghi lại địa chỉ **IP Public của VPS** (ví dụ: `13.250.36.84`).**
 
 ### 2.2. Bước 2: Cài Đặt Trên Máy Local (API Gateway)
 
 Đây là nơi chỉ chạy Kong API Gateway, đóng vai trò là "cửa ngõ" của hệ thống.
 
 1.  **Cấu Hình IP một lần (mới):**
-    *   Sửa biến `PUBLIC_IP` trong file `.env` ở thư mục gốc.
-    *   Chạy script PowerShell `scripts/render-kong.ps1` để sinh file `kong/kong.yml` từ template `kong/kong.yml.tmpl` dùng IP này.
+    *   Sửa biến `PUBLIC_IP` trong file `.env` ở thư mục gốc, hoặc dùng script tự động:
+        - PowerShell (Windows / VS Code Terminal):
+          ```powershell
+          # Chạy từ thư mục gốc repo trên máy local
+          pwsh ./scripts/update-kong.ps1 -PublicIp "<IP_VPS>"
+          ```
+        - Script này sẽ:
+          - Đảm bảo có file `.env`.
+          - Ghi/cập nhật biến `PUBLIC_IP` trong `.env`.
+          - Gọi `scripts/render-kong.ps1` để render lại `kong/kong.yml` từ template.
+    *   Nếu không dùng script update, có thể:
+        - Chỉnh tay `PUBLIC_IP` trong `.env`.
+        - Sau đó chạy:
+          ```powershell
+          pwsh ./scripts/render-kong.ps1
+          ```
     *   `docker-compose.yml` cũng đã dùng `${PUBLIC_IP}` cho `KEYCLOAK_REALM_URL` và `KC_HOSTNAME`.
 2.  **Khởi Chạy Kong:**
     *   Sử dụng file `docker-compose.kong-only.yml` được thiết kế riêng để chỉ chạy Kong:

@@ -29,6 +29,7 @@ services:
     build: ./usersvc
     ports: [ "3000:3000" ]
     environment:
+      # TODO (optional): Để tránh phụ thuộc IP cứng, có thể chuyển sang dùng hostname (vd KEYCLOAK_REALM_URL=http://keycloak:8080/realms/demo)
       KEYCLOAK_REALM_URL: http://${PUBLIC_IP}:8080/realms/demo
     deploy:
       resources:
@@ -55,22 +56,27 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
-    command: [ "start-dev", "--import-realm", "--http-enabled=true" ] # Thêm trực tiếp cờ --http-enabled + dev mode + import realm.json
+    # start-dev: dev mode, HTTP, sslRequired=NONE (phù hợp môi trường lab). --import-realm: auto import realm-export.json
+    # --http-enabled=true là dư khi dùng start-dev, nên bỏ để tránh cấu hình trùng lặp.
+    command: [ "start-dev", "--import-realm" ]
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin # biến mới (không deprecated)
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      KC_HOSTNAME: ${PUBLIC_IP} # IP public của VPS
-      KC_HTTP_ENABLED: "true"
+      # KC_HOSTNAME: ${PUBLIC_IP}
+      # ^ BỎ trong môi trường dev để không ghim issuer theo IP, tránh phải sửa khi đổi IP.
+      # KC_HTTP_ENABLED: "true"
+      # ^ Dư vì start-dev đã bật HTTP, giữ lại dễ gây hiểu nhầm.
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
-      # Thêm dòng JAVA_OPTS_APPEND này
-      JAVA_OPTS_APPEND: "-Dkeycloak.require.ssl=none"
+      # JAVA_OPTS_APPEND: "-Dkeycloak.require.ssl=none"
+      # ^ Cũ (WildFly-style), không cần khi đã dùng start-dev + realm-export.sslRequired=none.
       JAVA_OPTS: "-Xms256m -Xmx512m"
     volumes:
+      # Import realm demo với sslRequired=none từ file export (đã đúng cho dev)
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm.json:ro
     ports: [ "8080:8080" ]
     depends_on:
