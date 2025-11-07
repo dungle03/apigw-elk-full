@@ -9,9 +9,6 @@ $envPath = Join-Path $repoRoot '.env'
 $kongTemplatePath = Join-Path $repoRoot 'kong/kong.yml.tmpl'
 $kongOutputPath   = Join-Path $repoRoot 'kong/kong.yml'
 
-$realmTemplatePath = Join-Path $repoRoot 'keycloak/realm-export.json.tmpl'
-$realmOutputPath   = Join-Path $repoRoot 'keycloak/realm-export.json'
-
 $authTemplatePath = Join-Path $repoRoot 'usersvc/src/auth.service.ts.tmpl'
 $authOutputPath   = Join-Path $repoRoot 'usersvc/src/auth.service.ts'
 
@@ -76,21 +73,13 @@ function Render-Template {
 # Core variables passed to templates
 $templateVars = @{
   'PUBLIC_IP'           = $publicIp
-  'KEYCLOAK_REALM_ISS'  = "http://$publicIp`:8080/realms/demo"
   'KEYCLOAK_REALM_BASE' = "http://$publicIp`:8080/realms/demo"
 }
 
 # 1) Render kong.yml from template
 Render-Template -TemplatePath $kongTemplatePath -OutputPath $kongOutputPath -Variables $templateVars -Description 'kong/kong.yml'
 
-# 2) Render keycloak/realm-export.json (issuer)
-if (Test-Path $realmTemplatePath) {
-  Render-Template -TemplatePath $realmTemplatePath -OutputPath $realmOutputPath -Variables $templateVars -Description 'keycloak/realm-export.json'
-} else {
-  Write-Host "realm-export.json.tmpl not found, skipping realm-export.json render." -ForegroundColor Yellow
-}
-
-# 3) Render usersvc/src/auth.service.ts (KEYCLOAK_REALM_URL / kcRealmBase)
+# 2) Render usersvc/src/auth.service.ts (KEYCLOAK_REALM_BASE)
 if (Test-Path $authTemplatePath) {
   Render-Template -TemplatePath $authTemplatePath -OutputPath $authOutputPath -Variables $templateVars -Description 'usersvc/src/auth.service.ts'
 } else {

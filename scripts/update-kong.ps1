@@ -70,5 +70,5 @@ if (-not (Test-Path $renderScript)) {
 }
 & pwsh -NoProfile -ExecutionPolicy Bypass -File $renderScript
 
-Write-Host "Done. kong/kong.yml has been rendered from template." -ForegroundColor Green
+#Write-Host "Done. kong/kong.yml has been rendered from template." -ForegroundColor Green
 

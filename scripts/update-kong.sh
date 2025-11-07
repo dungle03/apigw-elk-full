@@ -75,4 +75,4 @@ else
   "$RENDER_SCRIPT"
 fi
 
-echo "Done. kong/kong.yml has been rendered from template." >&2
+#echo "Done. kong/kong.yml has been rendered from template." >&2

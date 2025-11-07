@@ -9,9 +9,6 @@ ENV_PATH="${REPO_ROOT}/.env"
 KONG_TEMPLATE_PATH="${REPO_ROOT}/kong/kong.yml.tmpl"
 KONG_OUTPUT_PATH="${REPO_ROOT}/kong/kong.yml"
 
-REALM_TEMPLATE_PATH="${REPO_ROOT}/keycloak/realm-export.json.tmpl"
-REALM_OUTPUT_PATH="${REPO_ROOT}/keycloak/realm-export.json"
-
 AUTH_TEMPLATE_PATH="${REPO_ROOT}/usersvc/src/auth.service.ts.tmpl"
 AUTH_OUTPUT_PATH="${REPO_ROOT}/usersvc/src/auth.service.ts"
 
@@ -42,8 +39,7 @@ fi
 PUBLIC_IP="${VARS[PUBLIC_IP]}"
 echo "Using PUBLIC_IP=${PUBLIC_IP} from .env"
 
-KEYCLOAK_REALM_ISS="http://${PUBLIC_IP}:8080/realms/demo"
-KEYCLOAK_REALM_BASE="${KEYCLOAK_REALM_ISS}"
+KEYCLOAK_REALM_BASE="http://${PUBLIC_IP}:8080/realms/demo"
 
 # Simple template renderer: replace ${VAR} literally
 render_template() {
@@ -61,7 +57,6 @@ render_template() {
 
   # Core vars
   content="${content//\$\{PUBLIC_IP\}/${PUBLIC_IP}}"
-  content="${content//\$\{KEYCLOAK_REALM_ISS\}/${KEYCLOAK_REALM_ISS}}"
   content="${content//\$\{KEYCLOAK_REALM_BASE\}/${KEYCLOAK_REALM_BASE}}"
 
   printf "%s" "${content}" > "${output_path}"
@@ -75,14 +70,7 @@ render_template() {
 # 1) Render kong.yml from template
 render_template "${KONG_TEMPLATE_PATH}" "${KONG_OUTPUT_PATH}" "kong/kong.yml"
 
-# 2) Render keycloak/realm-export.json (issuer)
-if [[ -f "${REALM_TEMPLATE_PATH}" ]]; then
-  render_template "${REALM_TEMPLATE_PATH}" "${REALM_OUTPUT_PATH}" "keycloak/realm-export.json"
-else
-  echo "realm-export.json.tmpl not found, skipping realm-export.json render."
-fi
-
-# 3) Render usersvc/src/auth.service.ts (KEYCLOAK_REALM_BASE)
+# 2) Render usersvc/src/auth.service.ts (KEYCLOAK_REALM_BASE)
 if [[ -f "${AUTH_TEMPLATE_PATH}" ]]; then
   render_template "${AUTH_TEMPLATE_PATH}" "${AUTH_OUTPUT_PATH}" "usersvc/src/auth.service.ts"
 else

@@ -72,17 +72,14 @@ PUBLIC_IP=<YOUR_VPS_PUBLIC_IP_OR_DOMAIN>
 Từ `PUBLIC_IP`, các script sẽ render đồng bộ:
 
 - `kong/kong.yml` từ `kong/kong.yml.tmpl`
-- `keycloak/realm-export.json` từ `keycloak/realm-export.json.tmpl`
 - `usersvc/src/auth.service.ts` từ `usersvc/src/auth.service.ts.tmpl`
 
 Nguyên tắc:
 
-- `KEYCLOAK_REALM_ISS  = http://<PUBLIC_IP>:8080/realms/demo`
 - `KEYCLOAK_REALM_BASE = http://<PUBLIC_IP>:8080/realms/demo`
-- Các thành phần sau PHẢI dùng cùng giá trị này:
-  - issuer trong `realm-export.json`
-  - `kcRealmBase` trong `usersvc/src/auth.service.ts`
-  - issuer/key trong `kong/kong.yml` (nếu dùng JWT plugin)
+- Các thành phần sau NÊN dùng cùng giá trị này:
+  - `kcRealmBase` trong `usersvc/src/auth.service.ts` (được render từ template)
+  - issuer/key trong `kong/kong.yml` (nếu dùng JWT plugin để verify JWT Keycloak)
 
 Cách chạy scripts:
 
@@ -97,7 +94,7 @@ Cách chạy scripts:
   - Script sẽ:
     - Đảm bảo `.env` tồn tại.
     - Ghi/cập nhật `PUBLIC_IP`.
-    - Gọi `scripts/render-kong.ps1` để render `kong.yml`, `realm-export.json`, `auth.service.ts`.
+    - Gọi `scripts/render-kong.ps1` để render `kong.yml` và `usersvc/src/auth.service.ts`.
 
 - Trên VPS / Linux (nếu cần render từ server):
 
