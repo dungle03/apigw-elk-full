@@ -16,7 +16,7 @@ consumers:
 plugins:
   - name: http-log
     config:
-      http_endpoint: "http://${PUBLIC_IP}:8081/kong"
+      http_endpoint: "http://logstash:8081/kong"
       method: POST
       timeout: 10000
       keepalive: 60000
