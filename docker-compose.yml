@@ -58,7 +58,7 @@ services:
     image: quay.io/keycloak/keycloak:26.0
     # start-dev: dev mode, HTTP, sslRequired=NONE (phù hợp môi trường lab). --import-realm: auto import realm-export.json
     # --http-enabled=true là dư khi dùng start-dev, nên bỏ để tránh cấu hình trùng lặp.
-    command: [ "start-dev", "--import-realm" ]
+    #command: [ "start-dev", "--import-realm" ]
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
@@ -66,6 +66,11 @@ services:
       KC_DB_PASSWORD: keycloak
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # Thêm các biến môi trường này để ép HTTP
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: "edge" # Rất quan trọng, báo cho Keycloak biết nó đang chạy sau một proxy (là chính Docker)
+      
+
       # KC_HOSTNAME: ${PUBLIC_IP}
       # ^ BỎ trong môi trường dev để không ghim issuer theo IP, tránh phải sửa khi đổi IP.
       # KC_HTTP_ENABLED: "true"
