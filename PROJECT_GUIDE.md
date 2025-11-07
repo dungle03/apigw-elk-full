@@ -59,6 +59,63 @@ flowchart LR
 
 Mô hình này yêu cầu cài đặt ở cả hai nơi: VPS và máy local. Hãy thực hiện tuần tự và cẩn thận.
 
+### 2.0. Đồng bộ cấu hình bằng PUBLIC_IP và scripts (BỔ SUNG)
+
+Để tránh phải sửa tay nhiều file mỗi lần đổi IP VPS, dự án cung cấp cơ chế render tự động các cấu hình quan trọng dựa trên một biến duy nhất:
+
+- File `.env` tại thư mục gốc:
+
+```env
+PUBLIC_IP=<YOUR_VPS_PUBLIC_IP_OR_DOMAIN>
+```
+
+Từ `PUBLIC_IP`, các script sẽ render đồng bộ:
+
+- `kong/kong.yml` từ `kong/kong.yml.tmpl`
+- `keycloak/realm-export.json` từ `keycloak/realm-export.json.tmpl`
+- `usersvc/src/auth.service.ts` từ `usersvc/src/auth.service.ts.tmpl`
+
+Nguyên tắc:
+
+- `KEYCLOAK_REALM_ISS  = http://<PUBLIC_IP>:8080/realms/demo`
+- `KEYCLOAK_REALM_BASE = http://<PUBLIC_IP>:8080/realms/demo`
+- Các thành phần sau PHẢI dùng cùng giá trị này:
+  - issuer trong `realm-export.json`
+  - `kcRealmBase` trong `usersvc/src/auth.service.ts`
+  - issuer/key trong `kong/kong.yml` (nếu dùng JWT plugin)
+
+Cách chạy scripts:
+
+- Trên máy local (Windows / PowerShell):
+
+  - Cập nhật IP và render:
+
+    ```powershell
+    pwsh ./scripts/update-kong.ps1 -PublicIp "<VPS_PUBLIC_IP_OR_DOMAIN>"
+    ```
+
+  - Script sẽ:
+    - Đảm bảo `.env` tồn tại.
+    - Ghi/cập nhật `PUBLIC_IP`.
+    - Gọi `scripts/render-kong.ps1` để render `kong.yml`, `realm-export.json`, `auth.service.ts`.
+
+- Trên VPS / Linux (nếu cần render từ server):
+
+  ```bash
+  chmod +x scripts/render-kong.sh
+  ./scripts/render-kong.sh
+  ```
+
+- Khi đổi IP/domain:
+  - Cập nhật `PUBLIC_IP` trong `.env`
+  - Chạy script tương ứng
+  - Restart docker compose / Kong nếu cần
+
+Nhờ đó:
+- Không cần sửa tay nhiều file.
+- Không cần chạy 3 lệnh `kcadm` sslRequired=NONE sau mỗi lần restart nếu giữ đúng template.
+- Luồng iss/verify JWT trong Kong và usersvc luôn nhất quán với Keycloak.
+
 ### 2.1. Bước 1: Cài Đặt Trên Máy Chủ VPS (Backend & Logging)
 
 Đây là nơi chạy các dịch vụ "nặng". Các bước chi tiết đã có trong file `SETUP_REMOTE_INFRA.md`.

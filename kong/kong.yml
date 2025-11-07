@@ -9,7 +9,7 @@ consumers:
         algorithm: RS256
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----
-          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxSo0aq6krjemO9ABcXSfERlId5KJx2UMsQjIy71uSrmAkNU3DnHMCdcARhkV55jaBFiZZ/NQc8zHDknujYioTBzI+f4owKQG7969XeaxZ/+HkVqPMjlGKvKvZW+aDwKMRhGbqjnnCaOJ2G8GkKCp6y0Kr8Hxptg/fKUdDWu9CpbT6oNYEab6qHj8aHkFOT7sP+JCrBRetZqglovF0kCjNaq7W9B5mUzt3X/cn/dztMjAwmrAZ543TaAucaidqBshhGcyK+vIZf5Hm8Ekrw0NyP4UkAMGcb5uuLj6VxnWdziEekwx+/cE4gAGnb13wBMR1qwpc33M/C/etUXGp58XSwIDAQAB
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsnhRJ0s3FGe+cPJRyPxt623DmAx6BCWzgH1hdasiCsprgOjyZEFkUeTrYrV87iu/m/CTPRYZcuHOGg6Mmyqf+SMJyHY1BBYU/5KVzVBYgKHPMqGgFAllUtEmwAB85U9/lyFtf/i4eBfmggId47aU6KUNPsnUowM9ud9YHqldVav0PtDQr8WU4m2jZZPt6TNx5TmNQygXgAm0ZSBqiTeM/wEFPtbLRUeNjg2xYJSSUb1CL3/vvPzTGw61wmY1+35PCEbLkoFvqn19mUcDSFz9cVE4AVNPipz8RrbpxD5Yhd1qlyb4pRCqBDcytuDM3mWjBE2RkCAyxvxPhCjAvbM3zQIDAQAB
           -----END PUBLIC KEY-----
 
 # Global Plugins

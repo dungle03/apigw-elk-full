@@ -5,14 +5,18 @@ $ErrorActionPreference = 'Stop'
 # Determine repo root (parent of this script's directory)
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $envPath = Join-Path $repoRoot '.env'
-$templatePath = Join-Path $repoRoot 'kong/kong.yml.tmpl'
-$outputPath = Join-Path $repoRoot 'kong/kong.yml'
+
+$kongTemplatePath = Join-Path $repoRoot 'kong/kong.yml.tmpl'
+$kongOutputPath   = Join-Path $repoRoot 'kong/kong.yml'
+
+$realmTemplatePath = Join-Path $repoRoot 'keycloak/realm-export.json.tmpl'
+$realmOutputPath   = Join-Path $repoRoot 'keycloak/realm-export.json'
+
+$authTemplatePath = Join-Path $repoRoot 'usersvc/src/auth.service.ts.tmpl'
+$authOutputPath   = Join-Path $repoRoot 'usersvc/src/auth.service.ts'
 
 if (-not (Test-Path $envPath)) {
   throw ".env not found at $envPath"
-}
-if (-not (Test-Path $templatePath)) {
-  throw "Template not found at $templatePath"
 }
 
 # Parse .env into a hashtable
@@ -35,11 +39,61 @@ if (-not $vars.ContainsKey('PUBLIC_IP')) {
   throw "PUBLIC_IP not found in .env"
 }
 
-# Render template: simple ${VAR} replacement (literal, not regex)
-$content = Get-Content -Path $templatePath -Raw
-$rendered = $content.Replace('${PUBLIC_IP}', $vars['PUBLIC_IP'])
+$publicIp = $vars['PUBLIC_IP']
 
-# Write output
-$rendered | Set-Content -Path $outputPath -NoNewline
+Write-Host "Using PUBLIC_IP=$publicIp from .env" -ForegroundColor Cyan
 
-Write-Host "Rendered $templatePath -> $outputPath using PUBLIC_IP=$($vars['PUBLIC_IP'])" -ForegroundColor Green
+# Helper: simple literal ${VAR} replacement
+function Render-Template {
+  param(
+    [Parameter(Mandatory = $true)][string]$TemplatePath,
+    [Parameter(Mandatory = $true)][string]$OutputPath,
+    [Parameter(Mandatory = $true)][hashtable]$Variables,
+    [string]$Description
+  )
+
+  if (-not (Test-Path $TemplatePath)) {
+    throw "Template not found: $TemplatePath"
+  }
+
+  $content = Get-Content -Path $TemplatePath -Raw
+
+  foreach ($key in $Variables.Keys) {
+    $placeholder = '${' + $key + '}'
+    $value = $Variables[$key]
+    $content = $content.Replace($placeholder, $value)
+  }
+
+  $content | Set-Content -Path $OutputPath -NoNewline
+  if ($Description) {
+    Write-Host "Rendered $Description: $TemplatePath -> $OutputPath" -ForegroundColor Green
+  } else {
+    Write-Host "Rendered: $TemplatePath -> $OutputPath" -ForegroundColor Green
+  }
+}
+
+# Core variables passed to templates
+$templateVars = @{
+  'PUBLIC_IP'           = $publicIp
+  'KEYCLOAK_REALM_ISS'  = "http://$publicIp`:8080/realms/demo"
+  'KEYCLOAK_REALM_BASE' = "http://$publicIp`:8080/realms/demo"
+}
+
+# 1) Render kong.yml from template
+Render-Template -TemplatePath $kongTemplatePath -OutputPath $kongOutputPath -Variables $templateVars -Description 'kong/kong.yml'
+
+# 2) Render keycloak/realm-export.json (issuer)
+if (Test-Path $realmTemplatePath) {
+  Render-Template -TemplatePath $realmTemplatePath -OutputPath $realmOutputPath -Variables $templateVars -Description 'keycloak/realm-export.json'
+} else {
+  Write-Host "realm-export.json.tmpl not found, skipping realm-export.json render." -ForegroundColor Yellow
+}
+
+# 3) Render usersvc/src/auth.service.ts (KEYCLOAK_REALM_URL / kcRealmBase)
+if (Test-Path $authTemplatePath) {
+  Render-Template -TemplatePath $authTemplatePath -OutputPath $authOutputPath -Variables $templateVars -Description 'usersvc/src/auth.service.ts'
+} else {
+  Write-Host "auth.service.ts.tmpl not found, skipping AuthService render." -ForegroundColor Yellow
+}
+
+Write-Host "All render steps completed."
