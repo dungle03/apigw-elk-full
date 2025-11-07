@@ -2,9 +2,7 @@
   "realm": "demo",
   "enabled": true,
   "sslRequired": "none",
-  
   "issuer": "http://13.213.32.80:8080/realms/demo",
-  
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,

@@ -41,7 +41,7 @@ if (-not $vars.ContainsKey('PUBLIC_IP')) {
 
 $publicIp = $vars['PUBLIC_IP']
 
-Write-Host "Using PUBLIC_IP=$publicIp from .env" -ForegroundColor Cyan
+Write-Host ("Using PUBLIC_IP={0} from .env" -f $publicIp) -ForegroundColor Cyan
 
 # Helper: simple literal ${VAR} replacement
 function Render-Template {
@@ -65,10 +65,11 @@ function Render-Template {
   }
 
   $content | Set-Content -Path $OutputPath -NoNewline
+
   if ($Description) {
-    Write-Host "Rendered $Description: $TemplatePath -> $OutputPath" -ForegroundColor Green
+    Write-Host ("Rendered {0}: {1} -> {2}" -f $Description, $TemplatePath, $OutputPath) -ForegroundColor Green
   } else {
-    Write-Host "Rendered: $TemplatePath -> $OutputPath" -ForegroundColor Green
+    Write-Host ("Rendered: {0} -> {1}" -f $TemplatePath, $OutputPath) -ForegroundColor Green
   }
 }
 
