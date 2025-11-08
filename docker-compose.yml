@@ -29,7 +29,6 @@ services:
     build: ./usersvc
     ports: [ "3000:3000" ]
     environment:
-      # TODO (optional): Để tránh phụ thuộc IP cứng, có thể chuyển sang dùng hostname (vd KEYCLOAK_REALM_URL=http://keycloak:8080/realms/demo)
       KEYCLOAK_REALM_URL: http://${PUBLIC_IP}:8080/realms/demo
     deploy:
       resources:
@@ -56,8 +55,6 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
-    # Giữ lại start-dev để chạy ở chế độ dev (HTTP, sslRequired=none mặc định)
-    # Thêm --hostname-strict=false để linh hoạt hơn với host header trong môi trường dev
     command: [ "start-dev", "--import-realm", "--hostname-strict=false" ]
     environment:
       KC_DB: postgres
@@ -66,12 +63,7 @@ services:
       KC_DB_PASSWORD: keycloak
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      
-      # Rất quan trọng: Đặt KC_HOSTNAME_STRICT_HTTPS=false
-      # Cờ này sẽ cho phép trang admin (security-admin-console) chấp nhận redirect_uri qua HTTP
       KC_HOSTNAME_STRICT_HTTPS: "false"
-      
-      # Các biến khác giữ nguyên
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
       JAVA_OPTS: "-Xms256m -Xmx512m"
@@ -82,7 +74,6 @@ services:
       keycloak-db:
         condition: service_healthy
     healthcheck:
-      # ping management port 9000 -> /health/ready (image không có curl)
       test: [ "CMD-SHELL", "bash -lc 'exec 3<>/dev/tcp/127.0.0.1/9000; printf \"GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -q \"200\" <&3'" ]
       interval: 10s
       timeout: 3s
@@ -122,11 +113,12 @@ services:
       elasticsearch:
         condition: service_healthy
     environment:
-      - LS_JAVA_OPTS=-Xmx256m -Xms256m
+      # Tăng heap cho Logstash để chạy/stall plugin http ổn định
+      - LS_JAVA_OPTS=-Xmx1g -Xms1g
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1G
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.15.2
