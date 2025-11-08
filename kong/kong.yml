@@ -5,18 +5,17 @@ _transform: true
 consumers:
   - username: keycloak-issuer
     jwt_secrets:
-      - key: "http://13.213.32.80:8080/realms/demo"
+      - key: "http://13.229.125.83:8080/realms/demo"
         algorithm: RS256
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----
-          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuOyb0AxGJYxvlRX46bG+cXtV81UyOxFbl9DInWyVGHBME36z7EZjCICyBqAdfliWTp8Qi/7PiHwhDyN6EWfSl/E5To30uUfjKWL8Bkur1bYYnGI0SmA/TA//rRnQM4ypaH5mvvtEEQHZkczEYQFrA8m3ysNK6KEL7Ol5QwNg8wnh/0SZofBg/jHrNi45YeeTGpNvtc60SrOgIItKIQV0JYfLvNHodnftGv0GrZn8RCqP9eGIBClg/Uog7iLiFckTl+ppbFZEdAj22twls/xMwzZB6ypzi1Jc75UJd0mL+vjHEtdrv8gt6uItBd+4J/omAZCMlEGssVq68O71ABY9cwIDAQAB
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsnhRJ0s3FGe+cPJRyPxt623DmAx6BCWzgH1hdasiCsprgOjyZEFkUeTrYrV87iu/m/CTPRYZcuHOGg6Mmyqf+SMJyHY1BBYU/5KVzVBYgKHPMqGgFAllUtEmwAB85U9/lyFtf/i4eBfmggId47aU6KUNPsnUowM9ud9YHqldVav0PtDQr8WU4m2jZZPt6TNx5TmNQygXgAm0ZSBqiTeM/wEFPtbLRUeNjg2xYJSSUb1CL3/vvPzTGw61wmY1+35PCEbLkoFvqn19mUcDSFz9cVE4AVNPipz8RrbpxD5Yhd1qlyb4pRCqBDcytuDM3mWjBE2RkCAyxvxPhCjAvbM3zQIDAQAB
           -----END PUBLIC KEY-----
 
 # Global Plugins
 plugins:
   - name: http-log
     config:
-      # Gửi log nội bộ qua Logstash service trong docker-compose
       http_endpoint: "http://logstash:8081/kong"
       method: POST
       timeout: 10000
@@ -29,7 +28,7 @@ plugins:
 services:
   # Login Service - Public endpoint
   - name: auth-service
-    url: http://13.213.32.80:3000
+    url: http://13.229.125.83:3000
     routes:
       - name: auth-route
         paths: ["/auth/login"]
@@ -65,7 +64,7 @@ services:
 
   # Protected API Service - Requires JWT Authentication
   - name: user-service
-    url: http://13.213.32.80:3000
+    url: http://13.229.125.83:3000
     routes:
       - name: user-route
         paths: ["/api"]

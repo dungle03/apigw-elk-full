@@ -5,7 +5,7 @@ import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
 @Injectable()
 export class AuthService {
   // Được render từ scripts/render-kong.ps1 dựa trên PUBLIC_IP (KEYCLOAK_REALM_BASE)
-  private kcRealmBase = 'http://13.213.32.80:8080/realms/demo';
+  private kcRealmBase = 'http://13.229.125.83:8080/realms/demo';
   private readonly logger = new Logger(AuthService.name);
 
   async loginWithKeycloak(username: string, password: string) {
