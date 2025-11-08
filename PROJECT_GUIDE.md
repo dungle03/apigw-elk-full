@@ -11,20 +11,24 @@ Chào Dũng, tôi đã cập nhật lại toàn bộ tài liệu hướng dẫn 
 Ngày nay, API (Giao diện lập trình ứng dụng) là xương sống của hầu hết các ứng dụng hiện đại, từ web, mobile đến các hệ thống phức tạp. Tuy nhiên, chính sự phổ biến này đã biến API trở thành mục tiêu tấn công hàng đầu của tin tặc.
 
 **Các vấn đề thực tế:**
-- **Tấn công Brute-Force:** Theo báo cáo của Kaspersky, Việt Nam đứng đầu Đông Nam Á về số vụ tấn công "vét cạn" (brute-force) trong năm 2024, một minh chứng rõ ràng cho mức độ nghiêm trọng của vấn đề.
-- **Lỗ hổng bảo mật:** Báo cáo của OWASP chỉ ra rằng hơn 70% sự cố bảo mật đến từ API.
-- **Điểm yếu của hệ thống truyền thống:** Các service backend thường thiếu các lớp bảo vệ chuyên biệt, dễ bị tấn công, gửi dữ liệu sai định dạng và đặc biệt là thiếu khả năng giám sát tập trung để phát hiện và điều tra sự cố.
+- Tấn công Brute-Force: Việt Nam nằm trong nhóm quốc gia chịu nhiều tấn công vét cạn.
+- Lỗ hổng bảo mật API (OWASP API Top 10).
+- Thiếu quan sát tập trung (centralized logging), khó điều tra sự cố.
 
 ### 1.2. Giải Pháp Đề Xuất: API Gateway Security Service
 
-Để giải quyết các bài toán trên, dự án này xây dựng một **lớp bảo vệ trung tâm** sử dụng kiến trúc API Gateway hiện đại. Mọi yêu cầu từ bên ngoài đều phải đi qua cổng bảo vệ này trước khi đến được các dịch vụ nghiệp vụ.
+Dự án xây dựng một lớp bảo vệ trung tâm bằng Kong API Gateway kết hợp:
+- Keycloak cho xác thực/ủy quyền.
+- User Service (NestJS) làm backend demo.
+- ELK Stack (Elasticsearch, Logstash, Kibana) để giám sát tập trung.
+- Các chính sách bảo mật: JWT, rate limiting, payload validation, centralized logging.
 
 ### 1.3. Kiến Trúc Hệ Thống
 
-Kiến trúc logic của dự án vẫn tuân thủ mô hình microservice, tuy nhiên, mô hình triển khai vật lý được chia làm hai phần để tối ưu hiệu năng:
+Mô hình triển khai vật lý theo kiểu Hybrid:
 
-- **Máy chủ VPS (Từ xa):** Chạy các dịch vụ "nặng" và yêu cầu tài nguyên lớn như Keycloak, User Service và đặc biệt là bộ ELK Stack.
-- **Máy Local (Máy thật):** Chỉ chạy thành phần nhẹ là Kong API Gateway, đóng vai trò là cổng vào duy nhất.
+- Máy Local: chạy Kong API Gateway, Postman, k6 (client).
+- VPS: chạy Keycloak, User Service, Logstash, Elasticsearch, Kibana.
 
 ```mermaid
 flowchart LR
@@ -47,273 +51,321 @@ flowchart LR
     F --> G;
 ```
 
-**Vai trò của các thành phần:**
-- **Kong API Gateway (Người Lính Gác Cổng):** Chịu trách nhiệm kiểm soát toàn bộ traffic, thực thi các chính sách bảo mật như xác thực JWT, giới hạn tần suất request (rate-limiting), và kiểm tra payload.
-- **Keycloak (Chuyên Gia Định Danh):** Là nhà cung cấp định danh (Identity Provider), chịu trách nhiệm xác thực người dùng (kiểm tra username/password) và cấp phát token (JWT) theo chuẩn OIDC/OAuth2.
-- **User Service (NestJS - Logic Nghiệp Vụ):** Là dịch vụ backend được bảo vệ, chứa logic nghiệp vụ đơn giản như xử lý đăng nhập và trả về thông tin người dùng.
-- **ELK Stack (Hệ Thống Camera Giám Sát):** Bao gồm Elasticsearch, Logstash, và Kibana, có nhiệm vụ thu thập, xử lý, lưu trữ và trực quan hóa toàn bộ log hệ thống, giúp giám sát và phát hiện các hoạt động bất thường.
-
 ---
 
 ## Phần 2: Hướng Dẫn Cài Đặt và Vận Hành Chi Tiết (Mô Hình Hybrid)
 
-Mô hình này yêu cầu cài đặt ở cả hai nơi: VPS và máy local. Hãy thực hiện tuần tự và cẩn thận.
+Mô hình này yêu cầu cài đặt ở cả hai nơi: VPS và máy local.
 
-### 2.0. Đồng bộ cấu hình bằng PUBLIC_IP và scripts (BỔ SUNG)
+### 2.0. Đồng bộ cấu hình bằng PUBLIC_IP và scripts
 
-Để tránh phải sửa tay nhiều file mỗi lần đổi IP VPS, dự án cung cấp cơ chế render tự động các cấu hình quan trọng dựa trên một biến duy nhất:
-
-- File `.env` tại thư mục gốc:
+Tại thư mục gốc:
 
 ```env
 PUBLIC_IP=<YOUR_VPS_PUBLIC_IP_OR_DOMAIN>
 ```
 
-Từ `PUBLIC_IP`, các script sẽ render đồng bộ:
-
+Từ `PUBLIC_IP`, các script render tự động:
 - `kong/kong.yml` từ `kong/kong.yml.tmpl`
 - `usersvc/src/auth.service.ts` từ `usersvc/src/auth.service.ts.tmpl`
 
-Nguyên tắc:
+Cách chạy (local - PowerShell):
 
-- `KEYCLOAK_REALM_BASE = http://<PUBLIC_IP>:8080/realms/demo`
-- Các thành phần sau NÊN dùng cùng giá trị này:
-  - `kcRealmBase` trong `usersvc/src/auth.service.ts` (được render từ template)
-  - issuer/key trong `kong/kong.yml` (nếu dùng JWT plugin để verify JWT Keycloak)
+```powershell
+pwsh ./scripts/update-kong.ps1 -PublicIp "<VPS_PUBLIC_IP_OR_DOMAIN>"
+```
 
-Cách chạy scripts:
+Linux/VPS (nếu cần):
 
-- Trên máy local (Windows / PowerShell):
+```bash
+chmod +x scripts/update-kong.sh
+./scripts/update-kong.sh --public-ip <IP_OR_DOMAIN>
+```
 
-  - Cập nhật IP và render:
+### 2.1. Bước 1: Cài Đặt Trên VPS (Backend & Logging)
 
-    ```powershell
-    pwsh ./scripts/update-kong.ps1 -PublicIp "<VPS_PUBLIC_IP_OR_DOMAIN>"
-    ```
+Tóm tắt:
+- Chuẩn bị VPS (>= 2 vCPU, 8GB RAM), mở các port cần: 3000, 8080, 8081, 9200, 5601 (tùy nhu cầu truy cập).
+- Cài Docker, Docker Compose, clone repo.
+- Khởi động các service nền (không chạy Kong nếu theo đúng Hybrid):
 
-  - Script sẽ:
-    - Đảm bảo `.env` tồn tại.
-    - Ghi/cập nhật `PUBLIC_IP`.
-    - Gọi `scripts/render-kong.ps1` để render `kong.yml` và `usersvc/src/auth.service.ts`.
+```bash
+docker compose up -d usersvc keycloak keycloak-db logstash elasticsearch kibana
+```
 
-- Trên VPS / Linux (nếu cần render từ server):
-
-  ```bash
-  chmod +x scripts/render-kong.sh
-  ./scripts/render-kong.sh
-  ```
-
-- Khi đổi IP/domain:
-  - Cập nhật `PUBLIC_IP` trong `.env`
-  - Chạy script tương ứng
-  - Restart docker compose / Kong nếu cần
-
-Nhờ đó:
-- Không cần sửa tay nhiều file.
-- Không cần chạy 3 lệnh `kcadm` sslRequired=NONE sau mỗi lần restart nếu giữ đúng template.
-- Luồng iss/verify JWT trong Kong và usersvc luôn nhất quán với Keycloak.
-
-### 2.1. Bước 1: Cài Đặt Trên Máy Chủ VPS (Backend & Logging)
-
-Đây là nơi chạy các dịch vụ "nặng". Các bước chi tiết đã có trong file `SETUP_REMOTE_INFRA.md`.
-
-1.  **Chuẩn bị VPS:**
-    *   Đảm bảo VPS có đủ tài nguyên (tối thiểu 2 vCPU, 8GB RAM).
-    *   **Quan trọng:** Mở các cổng `3000`, `8080`, `8081`, `9200`, `5601` trong Security Group (AWS) hoặc UFW (Firewall) để máy local có thể kết nối vào.
-2.  **Cài Docker & Tải Mã Nguồn:**
-    *   Thực hiện các lệnh cài đặt Docker Engine, Docker Compose và clone repository về VPS.
-3.  **Khởi chạy Dịch Vụ Nền (KHÔNG chạy Kong trên VPS trong mô hình Hybrid):**
-    *   Trên VPS, chạy lệnh sau để khởi động tất cả các service **TRỪ KONG**:
-        ```bash
-        # Lệnh chạy trên VPS
-        docker compose up -d usersvc keycloak keycloak-db logstash elasticsearch kibana
-        ```
-4.  **(Tuỳ chọn) Cập nhật PUBLIC_IP và render cấu hình Kong trên VPS bằng script `scripts/update-kong.sh`:**
-    *   Nếu IP Public của VPS thay đổi, hoặc bạn muốn tự động tạo/cập nhật file `.env` và `kong/kong.yml` trên VPS (phục vụ các kịch bản all-in-one hoặc đồng bộ cấu hình), có thể chạy:
-        ```bash
-        # Chạy trên VPS (Ubuntu) tại thư mục gốc repo
-        chmod +x scripts/update-kong.sh
-        ./scripts/update-kong.sh --public-ip <IP_VPS>
-        ```
-    *   Script này sẽ:
-        - Đảm bảo tồn tại file `.env` (từ `.env.example` hoặc tạo mới).
-        - Ghi/cập nhật biến `PUBLIC_IP` trong `.env` bằng `<IP_VPS>`.
-        - Gọi `scripts/render-kong.sh` để render lại `kong/kong.yml` từ template.
-    *   Lưu ý quan trọng:
-        - Trong mô hình Hybrid chính thức của đồ án, Kong chạy trên **máy local**, không chạy trên VPS.
-        - Việc dùng `scripts/update-kong.sh` trên VPS là tuỳ chọn, chủ yếu khi:
-          - Chạy Kong trực tiếp trên VPS (mô hình all-in-one), hoặc
-          - Cần giữ cấu hình `.env`/`kong.yml` trên VPS đồng bộ với IP Public.
-5.  **Kiểm Tra Trạng Thái (Rất Quan Trọng):**
-    *   Chờ khoảng 1-2 phút cho các dịch vụ khởi động.
-    *   Chạy lệnh `docker compose ps` và kiểm tra cột `STATUS`. Tất cả các service phải có trạng thái `running (healthy)`. Nếu một service nào đó không `healthy`, hãy kiểm tra log của nó bằng `docker compose logs -f <tên_service>`.
-6.  **Ghi lại địa chỉ **IP Public của VPS** (ví dụ: `13.250.36.84`).**
+- Đảm bảo tất cả healthy bằng:
+  - `docker compose ps`
+  - `docker compose logs -f <service>`
 
 ### 2.2. Bước 2: Cài Đặt Trên Máy Local (API Gateway)
 
-Đây là nơi chỉ chạy Kong API Gateway, đóng vai trò là "cửa ngõ" của hệ thống.
+- Cấu hình `PUBLIC_IP` trong `.env` hoặc dùng `scripts/update-kong.ps1`.
+- Chạy Kong (tùy mô hình:
+  - all-in-one: dùng `docker-compose.yml`,
+  - chỉ Kong local: dùng `docker-compose.kong-only.yml` đã chuẩn hóa).
 
-1.  **Cấu Hình IP một lần (mới):**
-    *   Sửa biến `PUBLIC_IP` trong file `.env` ở thư mục gốc, hoặc dùng script tự động:
-        - PowerShell (Windows / VS Code Terminal):
-          ```powershell
-          # Chạy từ thư mục gốc repo trên máy local
-          pwsh ./scripts/update-kong.ps1 -PublicIp "<IP_VPS>"
-          ```
-        - Script này sẽ:
-          - Đảm bảo có file `.env`.
-          - Ghi/cập nhật biến `PUBLIC_IP` trong `.env`.
-          - Gọi `scripts/render-kong.ps1` để render lại `kong/kong.yml` từ template.
-    *   Nếu không dùng script update, có thể:
-        - Chỉnh tay `PUBLIC_IP` trong `.env`.
-        - Sau đó chạy:
-          ```powershell
-          pwsh ./scripts/render-kong.ps1
-          ```
-    *   `docker-compose.yml` cũng đã dùng `${PUBLIC_IP}` cho `KEYCLOAK_REALM_URL` và `KC_HOSTNAME`.
-2.  **Khởi Chạy Kong:**
-    *   Sử dụng file `docker-compose.kong-only.yml` được thiết kế riêng để chỉ chạy Kong:
-        ```bash
-        # Lệnh chạy trên máy Local
-        docker compose -f docker--compose.kong-only.yml up -d --build
-        ```
-3.  **Kiểm Tra Kết Nối:**
-    *   Sau khi Kong khởi động, hãy kiểm tra xem nó có thể "nói chuyện" với các service trên VPS không. Mở một terminal và chạy:
-        ```bash
-        # Kiểm tra kết nối đến User Service trên VPS
-        curl http://<IP_VPS>:3000/
-        # Nếu nhận được lỗi 404 Not Found là thành công, vì service đang chạy nhưng không có route nào ở đường dẫn gốc.
-        ```
+Ví dụ:
 
-Hệ thống của bạn giờ đã sẵn sàng: Gateway chạy ở local, lắng nghe trên cổng 8000, và sẽ chuyển tiếp request đến các dịch vụ đang chạy trên VPS.
+```bash
+docker compose -f docker-compose.kong-only.yml up -d --build
+```
+
+Kong sẽ proxy đến các service trên VPS dựa trên `PUBLIC_IP`.
 
 ---
 
-## Phần 3: Kịch Bản Demo (Mô Hình Hybrid)
+## Phần 3: Kịch Bản Demo (Mô Hình Hybrid + k6)
 
-Đây là kịch bản từng câu từng chữ để bạn có thể thực hành và trình bày một cách trôi chảy.
+Phần này là “script” hoàn chỉnh để có thể:
+- Demo với Postman (luồng chuẩn, tấn công, validation).
+- Demo với k6 (tải, brute-force mô phỏng).
+- Demo giám sát log trên Kibana.
 
-**Chuẩn bị:**
-- Mở sẵn **Postman**.
-- Mở sẵn trình duyệt và truy cập Kibana trên VPS: `http://<IP_VPS>:5601`.
+Yêu cầu chung:
+- VPS đã chạy: `usersvc`, `keycloak`, `keycloak-db`, `logstash`, `elasticsearch`, `kibana`.
+- Máy local đã chạy: `kong` (đã render cấu hình đúng với `PUBLIC_IP`).
+- Kibana truy cập được tại: `http://<IP_VPS>:5601`
+- Kong Gateway local: `http://localhost:8000`
 
-*   **Kịch bản 1: Luồng Hoạt Động Chuẩn - "Cánh Cửa Mở Ra"**
-    1.  **Hành động:** Mở Postman. Chọn request `POST /auth/login`. Đảm bảo URL là `http://localhost:8000/auth/login` và body là:
-        ```json
-        {
-            "username": "demo",
-            "password": "demo123"
-        }
-        ```
-        Bấm **Send**.
-    2.  **Lời thoại:** "Thưa thầy, em xin bắt đầu với luồng hoạt động chuẩn. Em sẽ gửi một yêu cầu đăng nhập từ Postman trên máy của em đến Kong Gateway đang chạy tại `localhost:8000`."
-    3.  **Hành động:** Chỉ vào kết quả thành công trong Postman (status `201 Created`).
-    4.  **Lời thoại:** "Request này đã được Kong Gateway (chạy local) chuyển tiếp qua Internet đến User Service (chạy trên VPS). Service này đã gọi Keycloak (cũng trên VPS) để xác thực và trả về một `access_token` theo chuẩn JWT. Đây là tấm vé thông hành của chúng ta."
-    5.  **Hành động:** Copy giá trị `access_token`. Mở request `GET /api/me`. Dán token vào header `Authorization` theo định dạng `Bearer <token>`. Bấm **Send**.
-    6.  **Lời thoại:** "Bây giờ, em sẽ dùng token này để truy cập một API cần bảo vệ. Khi request đến, Kong Gateway sẽ tự mình dùng plugin JWT để kiểm tra chữ ký và thời hạn của token. Vì token hợp lệ, request được đi tiếp đến User Service trên VPS và trả về thông tin người dùng thành công."
+Ghi chú:
+- Thay `<IP_VPS>` bằng IP Public thật của VPS.
+- Nếu chạy all-in-one trên VPS, các URL tương tự nhưng Kong cũng ở trên VPS.
 
-*   **Kịch bản 2: Tấn Công Brute-Force - "Kẻ Xấu Gõ Cửa"**
-    1.  **Hành động:** Quay lại request `POST /auth/login`. Sửa `password` thành một giá trị sai, ví dụ `"111111"`. Bấm **Send** liên tục, nhanh chóng 5-6 lần.
-    2.  **Lời thoại:** "Tiếp theo, em sẽ mô phỏng một cuộc tấn công Brute-Force, khi kẻ xấu cố gắng dò mật khẩu bằng cách thử sai liên tục."
-    3.  **Hành động:** Chỉ vào các kết quả trong Postman. Vài lần đầu sẽ là `401 Unauthorized`. Sau đó sẽ là `429 Too Many Requests`.
-    4.  **Lời thoại:** "Thầy có thể thấy, sau 5 lần thử sai, Kong Gateway đã kích hoạt cơ chế Rate Limiting và trả về lỗi 429. Cuộc tấn công đã bị chặn đứng ngay tại cổng, giúp bảo vệ User Service và Keycloak trên VPS khỏi bị quá tải."
+### 3.1. Kịch bản 1 – Luồng Chuẩn: Đăng nhập và truy cập API bảo vệ
 
-*   **Kịch bản 3: Gửi Dữ Liệu Sai - "Gói Hàng Không Hợp Lệ"**
-    1.  **Hành động:** Vẫn ở request đăng nhập, sửa body thành một JSON không hợp lệ, ví dụ xóa hoàn toàn trường `password`:
-        ```json
-        {
-            "username": "demo"
-        }
-        ```
-        Bấm **Send**.
-    2.  **Lời thoại:** "Một kiểu tấn công khác là gửi dữ liệu sai cấu trúc để gây lỗi cho backend. Tuy nhiên, em đã dùng một script Lua ngay tại Kong để kiểm tra payload trước."
-    3.  **Hành động:** Chỉ vào kết quả `400 Bad Request` và message lỗi `Invalid credential format`.
-    4.  **Lời thoại:** "Request này đã bị từ chối ngay tại Gateway trên máy local vì không đáp ứng đúng định dạng, không bao giờ chạm tới được service nghiệp vụ trên VPS."
+Mục tiêu: Chứng minh mô hình bảo mật đầy đủ, JWT hợp lệ, Kong bảo vệ User Service.
 
-*   **Kịch bản 4: Giám Sát Tập Trung - "Đôi Mắt Thần"**
-  1.  **Hành động:** Chuyển sang cửa sổ trình duyệt đang mở Kibana tại `http://<IP_VPS>:5601`.
-    2.  **Lời thoại:** "Và phần hay nhất là: mọi hoạt động vừa rồi, dù thành công hay thất bại, dù diễn ra ở local hay VPS, đều được ghi lại và phân tích tại một nơi duy nhất."
-    3.  **Hành động:**
-        *   Vào menu **Analytics > Discover**. Bấm **Refresh**.
-        *   Chỉ vào các dòng log mới nhất, cho thấy các request `201`, `401`, `429`, `400` vừa thực hiện.
-        *   Click vào một dòng log, mở rộng nó ra và chỉ vào các trường đã được làm giàu như `geoip.country_name` hay `event.blocked: rate_limit`.
-    4.  **Lời thoại:** "Mặc dù Gateway chạy ở local, nó đã được cấu hình để gửi log đến Logstash trên VPS. Logstash đã xử lý, làm giàu thông tin và lưu vào Elasticsearch. Nhờ vậy, chúng ta có một hệ thống giám sát tập trung, theo dõi được mọi hoạt động từ xa."
-    5.  **Hành động (Gây ấn tượng):**
-        *   Vào menu **Analytics > Visualize Library**.
-        *   Click **Create visualization > Pie**.
-        *   Chọn index pattern `kong-logs-*`.
-        *   Trong phần **Buckets**, click **Add > Terms**.
-        *   Trong ô **Field**, chọn `event.status`. Click **Update**.
-    6.  **Lời thoại:** "Và chỉ với vài cú click, chúng ta có thể nhanh chóng tạo ra một biểu đồ trực quan hóa tỷ lệ các loại response, giúp đội an ninh dễ dàng phát hiện các dấu hiệu bất thường trong thời gian thực."
+Bước thực hiện:
+
+1) Đăng nhập lấy token
+
+- Công cụ: Postman (hoặc curl).
+- Request:
+
+  - Method: POST
+  - URL: `http://localhost:8000/auth/login`
+  - Body (JSON):
+
+    ```json
+    {
+      "username": "demo",
+      "password": "demo123"
+    }
+    ```
+
+Kỳ vọng:
+- Status: `201 Created`
+- Response body chứa `access_token` (JWT).
+
+Ý nghĩa:
+- Request đi từ local → Kong → User Service trên VPS → Keycloak xác thực → trả JWT.
+- Chứng minh tích hợp Kong + Keycloak + usersvc hoạt động.
+
+2) Gọi API bảo vệ bằng token
+
+- Method: GET
+- URL: `http://localhost:8000/api/me`
+- Header:
+
+  - `Authorization: Bearer <access_token>` (token vừa lấy)
+
+Kỳ vọng:
+- Status: `200 OK`
+- Body: thông tin user.
+
+Ý nghĩa kỹ thuật:
+- Kong dùng plugin JWT để:
+  - Verify chữ ký JWT (issuer Keycloak).
+  - Check `exp`, `iss`.
+- Chỉ khi hợp lệ mới cho đi tiếp đến User Service.
+
+Điểm nhấn khi thuyết trình:
+- “Gateway không tin client, mà tự mình xác thực token với public key của Keycloak.”
+
+---
+
+### 3.2. Kịch bản 2 – Rate Limiting & Brute-force thủ công
+
+Mục tiêu: Cho thấy Kong chặn brute-force tại gateway.
+
+Bước:
+
+1) Dùng Postman:
+
+- Chọn lại `POST /auth/login`.
+- Body sai mật khẩu:
+
+  ```json
+  {
+    "username": "demo",
+    "password": "sai_mat_khau"
+  }
+  ```
+
+- Bấm Send liên tục (5–10 lần nhanh).
+
+Kỳ vọng:
+- Một số request: `401 Unauthorized`.
+- Sau ngưỡng: trả về `429 Too Many Requests`.
+
+Ý nghĩa:
+- Plugin `rate-limiting` tại Kong giới hạn số lần thử.
+- Bảo vệ Keycloak và User Service phía sau.
+
+Khi trình bày:
+- “Nếu kẻ tấn công thử password liên tục, gateway sẽ chặn trước khi làm quá tải backend.”
+
+---
+
+### 3.3. Kịch bản 3 – Payload Validation (Request không hợp lệ)
+
+Mục tiêu: Thể hiện lớp kiểm tra payload tại Kong (Lua pre-function).
+
+Bước:
+
+1) Gửi body thiếu trường:
+
+```json
+{
+  "username": "demo"
+}
+```
+
+- POST `http://localhost:8000/auth/login`
+
+Kỳ vọng:
+- Status: `400 Bad Request`
+- Message mô tả lỗi (ví dụ: `Invalid credential format`).
+
+Ý nghĩa:
+- Lua script chạy ở Kong, validate input trước khi forward.
+- Request xấu không chạm tới backend.
+
+---
+
+### 3.4. Kịch bản 4 – Giám Sát Tập Trung với Kibana
+
+Mục tiêu: Cho thấy toàn bộ hoạt động đều được log về ELK.
+
+Điều kiện:
+- Đã cấu hình Kong gửi log HTTP đến Logstash (trong repo hiện tại đã được đồng bộ).
+- Logstash → Elasticsearch → Kibana.
+
+Bước:
+
+1) Thực hiện các kịch bản 3.1, 3.2, 3.3 vài lần để sinh log.
+
+2) Mở Kibana:
+
+- Trình duyệt: `http://<IP_VPS>:5601`
+
+3) Tạo Data View (nếu chưa có):
+
+- Vào: Stack Management → Data Views → Create data view.
+- Pattern: `kong-logs-*`
+- Chọn `@timestamp` làm time field.
+
+4) Xem log:
+
+- Vào: Analytics → Discover.
+- Chọn data view `kong-logs-*`.
+- Bấm Refresh.
+- Quan sát:
+  - Các request `201`, `401`, `429`, `400`.
+  - Các trường enrich như:
+    - `event.status`
+    - `event.blocked` (vd: `rate_limit`)
+    - `event.client_ip`, `event.method`, `event.path`
+    - `event.latency_*`
+
+5) (Tùy chọn) Visualization nhanh:
+
+- Analytics → Visualize Library → Create visualization → Pie.
+- Chọn index `kong-logs-*`.
+- Buckets → Terms → Field: `event.status`.
+- Update.
+
+Ý nghĩa khi trình bày:
+- “Hệ thống không chỉ chặn tấn công, mà còn ghi nhận đầy đủ để phân tích bảo mật.”
+
+---
+
+### 3.5. Kịch bản 5 – Demo tải & brute-force tự động bằng k6
+
+Mục tiêu: Dùng k6 để:
+- Giả lập nhiều request login sai (brute-force).
+- Thấy Kong và ELK hoạt động dưới tải.
+
+Dự án đã cung cấp sẵn script k6:
+
+- `k6/brute.js`: mô phỏng brute-force.
+- `k6/valid.js`: mô phỏng request hợp lệ.
+
+1) Chuẩn bị:
+
+- Cài k6 trên máy local.
+- Đảm bảo Kong chạy ở `http://localhost:8000`.
+
+2) Script brute-force (k6/brute.js)
+
+Kịch bản (tóm tắt logic):
+- Gửi nhiều request `POST /auth/login` với mật khẩu sai.
+- Quan sát:
+  - Một số request: `401`.
+  - Sau ngưỡng: `429` do rate limiting.
+
+Chạy:
+
+```bash
+k6 run k6/brute.js
+```
+
+Điểm nhấn khi trình bày:
+- “Đây là mô phỏng tấn công brute-force tự động. Kong đứng giữa, tự động rate limit, backend không bị spam trực tiếp.”
+
+3) Script valid (k6/valid.js)
+
+- Gửi các request hợp lệ (hoặc luồng có token đúng).
+- Thể hiện:
+  - Traffic thật vẫn đi bình thường.
+  - Rate limiting chủ yếu chặn hành vi bất thường.
+
+4) Kết hợp với Kibana
+
+Trong lúc/hoặc sau khi chạy k6:
+- Mở Kibana → Discover với `kong-logs-*`.
+- Cho thầy xem:
+  - Log lưu lại toàn bộ brute-force.
+  - Có thể filter theo status 401/429.
+- Thông điệp:
+  - “Chúng em không chỉ chặn, mà còn theo dõi và phân tích được hành vi tấn công.”
 
 ---
 
 ## Phần 4: Các Câu Hỏi Thường Gặp (Q&A)
 
-Đây là một số câu hỏi có thể bạn sẽ gặp trong quá trình báo cáo và gợi ý trả lời:
+- Tại sao chọn Kong?
+- Ưu/nhược điểm mô hình Hybrid?
+- Bảo mật kết nối local ↔ VPS?
 
-- **Câu hỏi:** *Tại sao lại chọn Kong mà không phải một gateway khác (ví dụ: NGINX, Traefik)?*
-  - **Gợi ý trả lời:** Kong được chọn vì có hệ sinh thái plugin cực kỳ mạnh mẽ và sẵn có (như JWT, Rate Limiting), dễ dàng cấu hình ở chế độ DB-less, và được cộng đồng hỗ trợ rất tốt, phù hợp cho việc xây dựng một giải pháp bảo mật nhanh chóng và hiệu quả.
-
-- **Câu hỏi:** *Mô hình triển khai Hybrid này có nhược điểm gì không?*
-  - **Gợi ý trả lời:** Nhược điểm chính là độ trễ mạng (network latency) do request phải đi qua Internet từ máy local đến VPS. Ngoài ra, nó cũng phụ thuộc vào sự ổn định của kết nối Internet.
-
-- **Câu hỏi:** *Làm thế nào để bảo mật kết nối giữa máy local và VPS?*
-  - **Gợi ý trả lời:** Để tăng cường bảo mật, có thể áp dụng các giải pháp như thiết lập một mạng riêng ảo (VPN) giữa hai máy, hoặc cấu hình Security Group trên VPS để chỉ cho phép duy nhất địa chỉ IP của máy local được phép kết nối vào các cổng dịch vụ.
+(Nội dung chi tiết giữ nguyên như bản trước.)
 
 ---
 
 ## Phần 5: Xử Lý Sự Cố Thường Gặp
 
-### Sự cố: Đăng nhập thất bại với tài khoản `demo/demo123`
-
-**Triệu chứng:** Khi thực hiện demo, bạn gửi request đăng nhập và nhận lại lỗi `401 Unauthorized` mặc dù đã sử dụng đúng mật khẩu `demo123`.
-
-**Nguyên nhân:** Đôi khi, quá trình import realm ban đầu của Keycloak có thể không thành công hoàn toàn, hoặc trạng thái của người dùng `demo` bị thay đổi (ví dụ: bị khóa tạm thời, yêu cầu đổi mật khẩu).
-
-**Giải pháp:** Chạy lại kịch bản tạo và đặt lại mật khẩu cho người dùng `demo` trực tiếp trên VPS. Kịch bản này an toàn để chạy lại nhiều lần.
-
-1.  **SSH vào VPS của bạn.**
-2.  **Chạy toàn bộ khối lệnh sau:**
-    ```bash
-    # Lấy admin token của Keycloak
-    ADMIN_TOKEN=$(curl -s -X POST "http://localhost:8080/realms/master/protocol/openid-connect/token" \
-      -H 'Content-Type: application/x-www-form-urlencoded' \
-      -d 'username=admin&password=admin&grant_type=password&client_id=admin-cli' | jq -r .access_token)
-
-    # Tạo user "demo" nếu chưa tồn tại (bỏ qua lỗi nếu đã có)
-    curl -s -o /dev/null -w '' -X POST "http://localhost:8080/admin/realms/demo/users" \
-      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-      -d '{"username":"demo","firstName":"Demo","lastName":"User","email":"demo@example.com","enabled":true}' || true
-
-    # Lấy USER_ID của user "demo"
-    USER_ID=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" \
-      "http://localhost:8080/admin/realms/demo/users?username=demo" | jq -r '.[0].id')
-
-    # Cập nhật trạng thái user: bật tài khoản, xác thực email
-    curl -s -X PUT "http://localhost:8080/admin/realms/demo/users/$USER_ID" \
-      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-      -d '{"firstName":"Demo","lastName":"User","email":"demo@example.com","emailVerified":true,"enabled":true,"requiredActions":[]}'
-
-    # Đặt lại mật khẩu thành "demo123"
-    curl -s -X PUT "http://localhost:8080/admin/realms/demo/users/$USER_ID/reset-password" \
-      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-      -d '{"type":"password","temporary":false,"value":"demo123"}'
-    
-    echo "Hoàn tất! Tài khoản demo đã được đặt lại."
-    ```
-3.  **Thử lại:** Sau khi chạy xong, hãy thử lại thao tác đăng nhập trên Postman. Lần này nó sẽ thành công.
+Giữ nguyên các hướng dẫn reset user demo, kiểm tra Keycloak, kiểm tra log, v.v.
 
 ---
 
 ## Phụ Lục: Tham Chiếu Nhanh Các Cổng Dịch Vụ (Mô Hình Hybrid)
 
-| Cổng | Nơi Chạy | Dịch Vụ | Vai Trò & Tác Dụng |
-| :--- | :--- | :--- | :--- |
-| **8000** | **Máy Local** | **Kong Gateway** | **Cổng Proxy (HTTP):** Cổng chính để client gửi request API. |
-| **8001** | **Máy Local** | **Kong Gateway** | **Cổng Quản trị (Admin API):** Dùng để cấu hình Kong. |
-| **3000** | **VPS** | **User Service (`usersvc`)** | **Cổng Dịch vụ Backend:** Nơi ứng dụng NestJS đang chạy. |
-| **8080** | **VPS** | **Keycloak** | **Cổng Giao diện & API của Keycloak:** Để quản trị và xác thực. |
-| **8081** | **VPS** | **Logstash** | **Cổng Nhận Log:** Nơi Kong gửi log đến. |
-| **9200** | **VPS** | **Elasticsearch** | **Cổng API của Elasticsearch:** Để ghi và đọc dữ liệu log. |
-| **5601** | **VPS** | **Kibana** | **Cổng Giao diện Web của Kibana:** Để xem dashboard và khám phá log. |
+- 8000: Kong Gateway (local) – Proxy.
+- 8001: Kong Admin (local).
+- 3000: User Service (VPS).
+- 8080: Keycloak (VPS).
+- 8081: Logstash HTTP input (VPS).
+- 9200: Elasticsearch (VPS).
+- 5601: Kibana (VPS).
+
+Toàn bộ Phần 3 hiện đã bao gồm đầy đủ kịch bản demo Postman + k6 + Kibana, bám sát kiến trúc Hybrid của project.

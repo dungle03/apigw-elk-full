@@ -9,14 +9,14 @@ consumers:
         algorithm: RS256
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----
-          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsnhRJ0s3FGe+cPJRyPxt623DmAx6BCWzgH1hdasiCsprgOjyZEFkUeTrYrV87iu/m/CTPRYZcuHOGg6Mmyqf+SMJyHY1BBYU/5KVzVBYgKHPMqGgFAllUtEmwAB85U9/lyFtf/i4eBfmggId47aU6KUNPsnUowM9ud9YHqldVav0PtDQr8WU4m2jZZPt6TNx5TmNQygXgAm0ZSBqiTeM/wEFPtbLRUeNjg2xYJSSUb1CL3/vvPzTGw61wmY1+35PCEbLkoFvqn19mUcDSFz9cVE4AVNPipz8RrbpxD5Yhd1qlyb4pRCqBDcytuDM3mWjBE2RkCAyxvxPhCjAvbM3zQIDAQAB
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAo345FSlAYmBx7jiMnLNCY7o2MD8rSjxLz4oCmu9DDm7E17yd2UJx3DKGsaMgfOA8r6qBqKWea+r2DtscW95JZDH28x/vV0/Spoic/uNn9lH4MxQeLswi+JjcgVdhu8XntF2NaX/iThUoi9yr4jGb12gUBW3IiLzKNtHeo9nTiYiwTH5N6mBTVJ/VIVFYz/1Zn+tqlDvOAH/fvP11qLii503SCIFoeK8QUp2glDjwcFwcNHgy8U+qqvC3DlzsRnmwbybBI+6uDGSGk3rJ6y7LtFQxsiO8YXoS/U2xXSN21K1NOy9xrl82fCxFbhk8gvtehrcw1+KR/1OO6DtSdoOdNQIDAQAB
           -----END PUBLIC KEY-----
 
 # Global Plugins
 plugins:
   - name: http-log
     config:
-      http_endpoint: "http://logstash:8081/kong"
+      http_endpoint: "http://13.229.125.83:8081/kong"
       method: POST
       timeout: 10000
       keepalive: 60000

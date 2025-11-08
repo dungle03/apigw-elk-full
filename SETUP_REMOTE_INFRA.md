@@ -127,7 +127,6 @@ curl http://<PUBLIC_IP>:8080/realms/demo/.well-known/openid-configuration
 ```powershell
 # Đảm bảo security group/ufw mở cổng 3000 trước khi test
 Test-NetConnection 13.250.36.84 -Port 3000
-
 # Gọi usersvc trực tiếp (chuỗi JSON không cần escape kép)
 curl.exe -i -X POST "http://localhost:8000/auth/login" `
   -H "Content-Type: application/json" `
