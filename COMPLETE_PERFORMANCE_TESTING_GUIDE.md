@@ -40,32 +40,82 @@ Sau đó chạy lệnh update: `pwsh -File .\scripts\update-kong.ps1`
 ### 1. Baseline Test (Sức Chịu Đựng Gốc)
 *Mục đích: Xem VPS chịu được bao nhiêu khi không có Gateway.*
 *   **Target:** `http://<IP_VPS>:3000/api/me`
-*   **JMeter:** 500 Users, Ramp-up 10s.
+*   **Cấu hình JMeter:**
+    *   **Thread Group:**
+        *   Number of Threads (Users): 500
+        *   Ramp-up period: 10s
+        *   Loop Count: Infinite (Duration: 60s)
+    *   **HTTP Request:**
+        *   Protocol: `http`
+        *   Server Name or IP: `<IP_VPS>` (Ví dụ: 18.139.209.233)
+        *   Port: `3000`
+        *   Path: `/api/me`
+        *   Method: `GET`
+        *   **Header Manager:** `Authorization: Bearer <TOKEN>`
 *   **Kỳ vọng:** Throughput cao nhất, Latency thấp nhất.
 
 ### 2. Gateway Overhead (Độ Trễ Gateway)
 *Mục đích: Đo xem Gateway làm chậm hệ thống bao nhiêu.*
 *   **Target:** `http://localhost:8000/api/me` (Qua Kong)
-*   **JMeter:** 500 Users, Ramp-up 10s.
+*   **Cấu hình JMeter:**
+    *   **Thread Group:**
+        *   Number of Threads (Users): 500
+        *   Ramp-up period: 10s
+        *   Loop Count: Infinite (Duration: 60s)
+    *   **HTTP Request:**
+        *   Protocol: `http`
+        *   Server Name or IP: `localhost`
+        *   Port: `8000`
+        *   Path: `/api/me`
+        *   Method: `GET`
+        *   **Header Manager:** `Authorization: Bearer <TOKEN>`
 *   **Kỳ vọng:** Throughput giảm nhẹ (<10%), Latency tăng nhẹ (<20ms) so với Baseline.
 
 ### 3. Mixed Traffic (Giao Thông Hỗn Hợp - *Thực Tế Nhất*)
 *Mục đích: Chứng minh Gateway bảo vệ User thật khi đang bị tấn công.*
-*   **Cấu hình JMeter (2 Thread Group chạy song song):**
-    *   **Group A (Valid Users):** 50 Users -> `GET /api/me` (Kèm Token). Target: 50 req/s.
-    *   **Group B (Attackers):** 100 Users -> `POST /auth/login` (Sai pass). Max speed.
+*   **Cấu hình JMeter (Tạo 1 Test Plan có 2 Thread Group chạy song song):**
+
+    **Group A: "Valid Users" (Người dùng thật)**
+    *   **Thread Group:**
+        *   Number of Threads: 50
+        *   Ramp-up period: 10s
+        *   Loop Count: Infinite (Duration: 60s)
+    *   **HTTP Request:** `GET http://localhost:8000/api/me` (Kèm Token)
+    *   **Timer (Quan trọng):** Chuột phải vào Thread Group -> Add -> Timer -> **Constant Throughput Timer**.
+        *   Target throughput: 3000 (samples per minute) ~ 50 req/s.
+
+    **Group B: "Attackers" (Kẻ tấn công)**
+    *   **Thread Group:**
+        *   Number of Threads: 100
+        *   Ramp-up period: 5s
+        *   Loop Count: Infinite (Duration: 60s)
+    *   **HTTP Request:** `POST http://localhost:8000/auth/login`
+        *   Body Data: `{"username": "admin", "password": "wrongpassword"}`
+        *   Header Manager: `Content-Type: application/json`
+    *   **Timer:** Không đặt (để bắn nhanh nhất có thể).
+
 *   **Kỳ vọng:**
     *   **User thật:** Error 0%, Latency ổn định.
     *   **Attacker:** Error ~100% (429 Too Many Requests).
 
 ### 4. Spike Test (Sốc Tải)
 *Mục đích: Kiểm tra khả năng phục hồi (Resilience).*
-*   **JMeter:** Tăng từ 0 lên **1000 Users** trong **5 giây**.
+*   **Cấu hình JMeter:**
+    *   **Thread Group:**
+        *   Number of Threads: 1000
+        *   Ramp-up period: **5s** (Tăng cực nhanh)
+        *   Loop Count: 10 (Hoặc Duration 30s)
+    *   **HTTP Request:** `GET http://localhost:8000/api/me` (Kèm Token)
 *   **Kỳ vọng:** Hệ thống không sập (Crash). Sau khi hết đỉnh tải, Latency giảm ngay về mức bình thường.
 
 ### 5. Soak Test (Chạy Bền)
 *Mục đích: Kiểm tra độ ổn định (Stability).*
-*   **JMeter:** 200 Users chạy liên tục trong **30 phút**.
+*   **Cấu hình JMeter:**
+    *   **Thread Group:**
+        *   Number of Threads: 200
+        *   Ramp-up period: 60s
+        *   Loop Count: Infinite (Duration: **1800s** = 30 phút)
+    *   **HTTP Request:** `GET http://localhost:8000/api/me` (Kèm Token)
 *   **Kỳ vọng:** RAM/CPU VPS không tăng dần theo thời gian (Không Memory Leak).
 
 ---
