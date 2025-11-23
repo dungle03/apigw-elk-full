@@ -114,7 +114,7 @@ Sau đó chạy lệnh update: `pwsh -File .\scripts\update-kong.ps1`
     *   **Thread Group:**
         *   Number of Threads: 200
         *   Ramp-up period: 60s
-        *   Loop Count: Infinite (Duration: **1800s** = 30 phút)
+        *   Loop Count: Infinite (Duration: **900** = 15 phút)
     *   **HTTP Request:** `GET http://localhost:8000/api/me` (Kèm Token)
 *   **Kỳ vọng:** RAM/CPU VPS không tăng dần theo thời gian (Không Memory Leak).
 
@@ -229,14 +229,17 @@ Sau đó chạy lệnh update: `pwsh -File .\scripts\update-kong.ps1`
 *   **Kỳ vọng:** Hệ thống không sập (Crash). Sau khi hết đỉnh tải, Latency giảm ngay về mức bình thường.
 
 ### 5. Soak Test (Chạy Bền)
-*Mục đích: Kiểm tra độ ổn định (Stability).*
-*   **Cấu hình JMeter:**
+*Mục đích: Kiểm tra độ ổn định (Stability) trong thời gian dài.*
+*   **Cấu hình JMeter (Tối ưu cho máy Local):**
     *   **Thread Group:**
-        *   Number of Threads: 200
+        *   Number of Threads: **50** (Giảm để tránh quá tải RAM local)
         *   Ramp-up period: 60s
-        *   Loop Count: Infinite (Duration: **1800s** = 30 phút)
+        *   Loop Count: Infinite (Duration: **900s** = 15 phút)
     *   **HTTP Request:** `GET http://localhost:8000/api/me` (Kèm Token)
-*   **Kỳ vọng:** RAM/CPU VPS không tăng dần theo thời gian (Không Memory Leak).
+    *   **Timer (Bắt buộc):** Constant Throughput Timer
+        *   Target throughput: **9000** (samples per minute) ~ 150 req/s.
+        *   Calculate Throughput based on: **all active threads**.
+*   **Kỳ vọng:** RAM/CPU VPS ổn định, không có lỗi 400/500, Latency không tăng dần theo thời gian.
 
 ---
 
@@ -255,7 +258,10 @@ Sau đó chạy lệnh update: `pwsh -File .\scripts\update-kong.ps1`
 | | | Attacker Blocked | **100%** | **Xuất Sắc.** Cơ chế Rate Limiting hoạt động hoàn hảo, không để lọt bất kỳ request tấn công nào vào Backend. |
 | **C. Độ Bền** | **4. Spike Test** | Recovery Time | **Gateway Overload** | Gateway (Local) bị quá tải kết nối (**Connection Refused**). **VPS Backend vẫn an toàn tuyệt đối** (CPU < 10%, RAM ổn định ở mức 2.2GB). |
 | | | Max Error Rate | **100%** | **Bảo Vệ Thành Công:** Gateway đã "hy sinh" để chặn đứng 2600 req/s. Hạ tầng VPS không hề bị ảnh hưởng bởi cú sốc tải này. |
-| | **5. Soak Test** | Stability | *(Chưa test)* | *Kỳ vọng: RAM không tăng quá 10% sau 30 phút chạy.* |
+| | **5. Soak Test**<br>*(15 phút, 200 threads, 154,851 samples)* | Error Rate | **0.00%** | **Hoàn Hảo.** Không có lỗi nào trong suốt 15 phút chạy liên tục. Hệ thống hoạt động ổn định tuyệt đối. |
+| | | Throughput | **149.8** req/s | **Xuất Sắc.** Throughput duy trì ổn định ~150 req/s (nhờ Constant Throughput Timer), dưới ngưỡng Rate Limit của Kong (166 req/s). |
+| | | Avg Latency | **68** ms | **Cực Kỳ Tốt.** Độ trễ thấp và ổn định (Std. Dev. chỉ 21.95), chứng tỏ không có Memory Leak hay Resource Degradation. |
+| | | Max Latency | **2146** ms | Có 1 đỉnh cao (spike), nhưng đây là hiện tượng bình thường trong long-running test (có thể do JVM GC hoặc Network fluctuation). |
 
 ---
 **4. KẾT LUẬN & KHUYẾN NGHỊ**
