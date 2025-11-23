@@ -91,7 +91,7 @@ flowchart TD
     ```
   - Đặt IP trực tiếp và render (không cần mở file):
     ```powershell
-    pwsh -File .\scripts\update-kong.ps1 -PublicIp 54.179.69.194
+    pwsh -File .\scripts\update-kong.ps1 -PublicIp 18.139.209.233
     ```
 
   - Linux/Ubuntu (bash) tương đương:
