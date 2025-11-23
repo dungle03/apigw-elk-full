@@ -100,7 +100,7 @@ flowchart TD
     bash ./scripts/update-kong.sh
 
     # Đặt IP trực tiếp và render
-    bash ./scripts/update-kong.sh --public-ip 54.179.69.194
+    bash ./scripts/update-kong.sh --public-ip 18.139.209.233
     ```
 
 - Lệnh chạy powershell:
