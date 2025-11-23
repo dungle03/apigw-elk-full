@@ -248,6 +248,20 @@ Sau đó chạy lệnh update: `pwsh -File .\scripts\update-kong.ps1`
 | :--- | :--- | :--- | :--- | :--- |
 | **A. Cơ Bản** | **1. Direct to VPS** | Max Throughput | **738.4** req/s | **Baseline Tốt.** Server VPS (cấu hình hiện tại) chịu được tải khá cao khi không có lớp bảo vệ. Đây là mốc chuẩn để so sánh. |
 | | | Avg Latency | **612** ms | Độ trễ trung bình ở mức chấp nhận được với tải 500 concurrent users. |
+| | **2. Gateway Overhead** | Max Throughput | **288.2** req/s | **Giảm ~61%**. *Nguyên nhân:* Không phải do Gateway chậm, mà do cấu hình Rate Limit (10,000 req/phút) thấp hơn khả năng bắn của JMeter (~45,000 req/phút), dẫn đến nhiều request bị từ chối và làm giảm throughput tổng. |
+| | | Avg Latency | **1040** ms | **Tăng ~400ms**. Việc xử lý logic từ chối (429) tốn thêm tài nguyên CPU của Gateway. |
+| **B. Bảo Mật** | **3. Mixed Traffic**<br>*(User thật vs Attacker)* | **Valid User Latency** | **446** ms | **Rất Tốt.** Độ trễ của User thật (446ms) thậm chí còn thấp hơn Baseline (612ms) do Gateway đã lọc bớt traffic rác, giảm tải cho Backend xử lý. |
+| | | Valid User Error | **15.86%** | **Cần Lưu Ý.** Hệ thống bị quá tải tài nguyên (Resource Exhaustion) khi phải gồng mình chặn 100 attacker/s. <br>**Khuyến nghị:** Cần nâng cấp CPU cho VPS hoặc tối ưu số lượng Kong Worker để giảm tỷ lệ này về 0%. |
+| | | Attacker Blocked | **100%** | **Xuất Sắc.** Cơ chế Rate Limiting hoạt động hoàn hảo, không để lọt bất kỳ request tấn công nào vào Backend. |
+| **C. Độ Bền** | **4. Spike Test** | Recovery Time | **System Crash** | Hệ thống bị quá tải kết nối (**Connection Refused**) ngay khi sốc tải. Không thể tự phục hồi ngay lập tức. |
+| | | Max Error Rate | **100%** | **Lỗi Hỗn Hợp:** Chủ yếu là mất kết nối (Refused) và Bad Request (do cấu hình test). <br>**Kết luận:** Hạ tầng hiện tại (Docker Desktop/VPS) chưa đủ sức chịu đựng 1000 CCU dồn dập trong 5s. |
+| | **5. Soak Test** | Stability | *(Chưa test)* | *Kỳ vọng: RAM không tăng quá 10% sau 30 phút chạy.* |
+
+---
+**4. KẾT LUẬN & KHUYẾN NGHỊ**
+
+Dựa trên số liệu thực tế đã đo đạc, chúng ta có thể rút ra các kết luận sau cho dự án:
+
 1.  **Hiệu Quả Bảo Mật Tuyệt Đối:** Gateway đã chứng minh khả năng chặn đứng **100%** các cuộc tấn công Brute-force/DDoS giả lập. Đây là điểm sáng nhất của hệ thống.
 2.  **Bảo Vệ Trải Nghiệm Người Dùng:** Trong khi hệ thống đang bị tấn công dữ dội, **85%** người dùng thật vẫn có thể truy cập dịch vụ với độ trễ thấp (**446ms**), tốt hơn cả khi không dùng Gateway (612ms).
 3.  **Vấn Đề Tài Nguyên:** Tỷ lệ lỗi 15% ở người dùng thật cho thấy phần cứng hiện tại (VPS) đang bị giới hạn khi xử lý traffic hỗn hợp cường độ cao.
