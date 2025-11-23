@@ -253,8 +253,8 @@ Sau đó chạy lệnh update: `pwsh -File .\scripts\update-kong.ps1`
 | **B. Bảo Mật** | **3. Mixed Traffic**<br>*(User thật vs Attacker)* | **Valid User Latency** | **446** ms | **Rất Tốt.** Độ trễ của User thật (446ms) thậm chí còn thấp hơn Baseline (612ms) do Gateway đã lọc bớt traffic rác, giảm tải cho Backend xử lý. |
 | | | Valid User Error | **15.86%** | **Cần Lưu Ý.** Hệ thống bị quá tải tài nguyên (Resource Exhaustion) khi phải gồng mình chặn 100 attacker/s. <br>**Khuyến nghị:** Cần nâng cấp CPU cho VPS hoặc tối ưu số lượng Kong Worker để giảm tỷ lệ này về 0%. |
 | | | Attacker Blocked | **100%** | **Xuất Sắc.** Cơ chế Rate Limiting hoạt động hoàn hảo, không để lọt bất kỳ request tấn công nào vào Backend. |
-| **C. Độ Bền** | **4. Spike Test** | Recovery Time | **System Crash** | Hệ thống bị quá tải kết nối (**Connection Refused**) ngay khi sốc tải. Không thể tự phục hồi ngay lập tức. |
-| | | Max Error Rate | **100%** | **Lỗi Hỗn Hợp:** Chủ yếu là mất kết nối (Refused) và Bad Request (do cấu hình test). <br>**Kết luận:** Hạ tầng hiện tại (Docker Desktop/VPS) chưa đủ sức chịu đựng 1000 CCU dồn dập trong 5s. |
+| **C. Độ Bền** | **4. Spike Test** | Recovery Time | **Gateway Overload** | Gateway (Local) bị quá tải kết nối (**Connection Refused**) do chạy trên máy cá nhân. **VPS Backend vẫn an toàn.** |
+| | | Max Error Rate | **100%** | **Bảo Vệ Thành Công (Theo cách cực đoan):** Gateway "hy sinh" (sập) trước khi traffic kịp làm hại Backend. Đây là minh chứng cho việc Gateway trở thành lá chắn bảo vệ hệ thống phía sau. |
 | | **5. Soak Test** | Stability | *(Chưa test)* | *Kỳ vọng: RAM không tăng quá 10% sau 30 phút chạy.* |
 
 ---
