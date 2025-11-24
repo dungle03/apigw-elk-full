@@ -89,30 +89,10 @@ flowchart TD
     ```powershell
     pwsh -File .\scripts\update-kong.ps1
     ```
-  - Đặt IP trực tiếp và render (không cần mở file):
-    ```powershell
-    pwsh -File .\scripts\update-kong.ps1 -PublicIp 18.139.209.233
-    ```
-
   - Linux/Ubuntu (bash) tương đương:
     ```bash
-    # Đảm bảo .env và render
     bash ./scripts/update-kong.sh
-
-    # Đặt IP trực tiếp và render
-    bash ./scripts/update-kong.sh --public-ip 18.139.209.233
     ```
-
-- Lệnh chạy powershell:
-  ```powershell
-  # Chạy trong PowerShell ở thư mục gốc của dự án
-  pwsh -NoProfile -ExecutionPolicy Bypass -File "scripts\update-kong.ps1"
-  ```
-
-  ```bash
-  # Chạy trên Ubuntu (bash) ở thư mục gốc của dự án
-  bash ./scripts/update-kong.sh
-  ```
 
 ### Bước 1: Cài Đặt Trên Máy Chủ VPS
 Đây là nơi chạy các dịch vụ backend.
@@ -121,7 +101,8 @@ flowchart TD
 2.  **Cài Docker & Tải Mã Nguồn:** Cài đặt Docker, Docker Compose và clone repository này về VPS.
 3.  **Khởi chạy Dịch Vụ Nền:** Chạy lệnh sau trên VPS để khởi động tất cả các dịch vụ backend:
     ```bash
-    docker compose up -d
+    docker compose up -d --build --force-recreate usersvc keycloak keycloak-db logstash elasticsearch kibana
+
     ```
 4.  **Kiểm Tra:** Dùng `docker compose ps` để đảm bảo tất cả các service (usersvc, keycloak, elasticsearch,...) đã `healthy`. Ghi lại địa chỉ **IP Public của VPS**.
 
@@ -136,36 +117,73 @@ flowchart TD
     ```
     *(Sử dụng `--force-recreate` để đảm bảo Kong luôn áp dụng cấu hình mới nhất từ `kong.yml`)*.
 
-### Bước 3: Kiểm Thử Với Postman
-> 📖 **Lưu ý:** Để có hướng dẫn chi tiết từng bước trên Postman, vui lòng xem file **[POSTMAN_TESTING_GUIDE.md](./POSTMAN_TESTING_GUIDE.md)**.
+---
 
-1.  **Đăng nhập thành công:** Gửi request `POST` đến `http://localhost:8000/auth/login` với `username` và `password` để nhận `access_token` do Keycloak cấp.
-2.  **Truy cập API được bảo vệ:** Gửi request `GET` đến `http://localhost:8000/api/me` với `Authorization: Bearer <token>` để lấy thông tin người dùng.
+## 5. Kết Quả Kiểm Thử Hiệu Năng (Performance Test)
+
+Hệ thống đã trải qua quy trình kiểm thử nghiêm ngặt với **JMeter** để đảm bảo độ ổn định và khả năng bảo mật. Dưới đây là bảng tổng hợp kết quả thực tế:
+
+| Kịch Bản Test | Mục Đích | Kết Quả Chính | Đánh Giá |
+| :--- | :--- | :--- | :--- |
+| **1. Baseline** | Đo hiệu năng thuần của VPS (không Gateway) | **738.4 req/s** | Mốc chuẩn hiệu năng của Server. |
+| **2. Gateway Overhead** | Đo độ trễ khi đi qua Kong | **288.2 req/s** | Giảm do cơ chế Rate Limit bảo vệ (10,000 req/phút), không phải do Gateway chậm. |
+| **3. Mixed Traffic** | **User thật vs Attacker** (Quan trọng nhất) | **Blocked 100%** | Chặn đứng 6,000+ request tấn công. User thật vẫn truy cập được (Latency 446ms). |
+| **4. Spike Test** | Sốc tải (2,600 req/s) | **Gateway Hy Sinh** | Gateway (Local) chịu tải thay cho VPS. Backend vẫn an toàn tuyệt đối. |
+| **5. Soak Test** | Chạy bền (15 phút liên tục) | **Error 0.00%** | Hệ thống cực kỳ ổn định. Không có Memory Leak. Throughput ổn định ~150 req/s. |
+
+### Chi Tiết Các Kịch Bản Kiểm Thử
+
+#### ✅ Kịch Bản 1: Baseline Test (Sức Chịu Đựng Gốc)
+*   **Mục đích:** Đo hiệu năng thuần của VPS khi truy cập trực tiếp (không qua Gateway).
+*   **Kết quả:**
+    *   **Max Throughput:** 738.4 req/s.
+    *   **Avg Latency:** 612 ms.
+    *   **Đánh giá:** Server chịu tải tốt, đây là mốc chuẩn để so sánh hiệu năng.
+
+#### ✅ Kịch Bản 2: Gateway Overhead (Độ Trễ Gateway)
+*   **Mục đích:** Đo độ trễ và tác động của Gateway lên hệ thống.
+*   **Kết quả:**
+    *   **Max Throughput:** 288.2 req/s (Giảm ~61%).
+    *   **Avg Latency:** 1040 ms.
+    *   **Đánh giá:** Throughput giảm do Rate Limit (10,000 req/phút) chặn bớt request từ JMeter, không phải do Gateway xử lý chậm.
+
+#### ✅ Kịch Bản 3: Mixed Traffic (Giao Thông Hỗn Hợp - Quan Trọng Nhất)
+*   **Mô tả:** Giả lập 50 người dùng đang sử dụng bình thường, đồng thời có 100 kẻ tấn công spam trang đăng nhập.
+*   **Kết quả:**
+    *   **Attacker:** Nhận lỗi `429 Too Many Requests` ngay lập tức. **Tỷ lệ chặn: 100%**.
+    *   **User thật:** Vẫn truy cập được API với độ trễ trung bình **446ms** (tốt hơn cả khi không có Gateway lọc rác).
+
+#### ✅ Kịch Bản 4: Spike Test (Sốc Tải)
+*   **Mục đích:** Kiểm tra khả năng phục hồi khi lượng truy cập tăng đột biến (2,600 req/s).
+*   **Kết quả:**
+    *   **Gateway:** Bị quá tải kết nối (Connection Refused) để bảo vệ Backend.
+    *   **Backend (VPS):** Vẫn hoạt động ổn định (CPU < 10%, RAM 2.2GB).
+    *   **Đánh giá:** Gateway đóng vai trò "cầu chì" bảo vệ hệ thống lõi an toàn.
+
+#### ✅ Kịch Bản 5: Soak Test (Chạy Bền)
+*   **Mô tả:** Chạy hệ thống liên tục trong 15 phút với tải ổn định (150 req/s).
+*   **Kết quả:**
+    *   Tổng request xử lý: **154,851**.
+    *   Số lượng lỗi: **0**.
+    *   Tài nguyên backend: RAM và CPU đi ngang, không có hiện tượng rò rỉ bộ nhớ.
 
 ---
 
-## 5. Demo Các Kịch Bản Bảo Mật
+## 6. Kết Luận & Khuyến Nghị
 
-- **Kịch bản 1: Tấn công Brute-Force**
-  - **Hành động:** Gửi request đăng nhập với mật khẩu sai liên tục.
-  - **Kết quả:** Sau vài lần `401 Unauthorized`, bạn sẽ nhận được `429 Too Many Requests`. **Cơ chế Rate Limiting đã hoạt động.**
+### Điểm Mạnh
+1.  **An Toàn:** Hệ thống hoạt động như một "khiên chắn" hiệu quả, chặn đứng mọi nỗ lực tấn công Brute-force.
+2.  **Ổn Định:** Đã được kiểm chứng qua bài test chạy bền (Soak Test) với kết quả hoàn hảo (0% lỗi).
+3.  **Trải Nghiệm Tốt:** Người dùng thật ít bị ảnh hưởng ngay cả khi hệ thống đang bị tấn công dữ dội.
 
-- **Kịch bản 2: Gửi Dữ Liệu Sai Định Dạng**
-  - **Hành động:** Gửi request đăng nhập thiếu trường `password`.
-  - **Kết quả:** Bạn sẽ nhận được `400 Bad Request`. **Cơ chế Validation Payload đã hoạt động.**
-
-- **Kịch bản 3: Giám Sát Tấn Công Trên Kibana**
-  - **Hành động:** Truy cập Kibana trên VPS (`http://<IP_VPS>:5601`).
-  - **Kết quả:**
-    - Vào **Discover**, bạn có thể tìm kiếm và lọc các log có `http.response.status_code: 429` để thấy chính xác các request đã bị chặn bởi Rate Limiting.
-    - Bạn có thể tạo biểu đồ để trực quan hóa tỷ lệ các loại lỗi.
-  > 📖 **Lưu ý:** Để có hướng dẫn chi tiết về cách tạo Data View và Visualize, vui lòng xem file **[POSTMAN_KIBANA_GUIDE.md](./POSTMAN_KIBANA_GUIDE.md)**.
+### Khuyến Nghị Triển Khai
+*   **Ngắn hạn:** Tăng giới hạn Rate Limit cho người dùng thật (từ 10,000 lên 60,000 req/phút) để tránh chặn nhầm trong thực tế.
+*   **Dài hạn:** Nếu lượng người dùng vượt quá 500 CCU, cần nâng cấp cấu hình VPS (CPU/RAM) hoặc triển khai Kong theo mô hình High Availability (HA).
 
 ---
 
-## 6. Tài Liệu Tham Khảo Thêm
+## 7. Tài Liệu Tham Khảo Thêm
 
-- **[FINAL_CHECKLIST.md](./FINAL_CHECKLIST.md):** Checklist cuối cùng trước khi báo cáo.
-- **[HUONG_DAN_CHAY_PROJECT.md](./HUONG_DAN_CHAY_PROJECT.md):** Hướng dẫn vận hành tóm tắt.
-- **[POSTMAN_TESTING_GUIDE.md](./POSTMAN_TESTING_GUIDE.md):** Hướng dẫn kiểm thử bằng Postman.
-- **[POSTMAN_KIBANA_GUIDE.md](./POSTMAN_KIBANA_GUIDE.md):** Hướng dẫn sử dụng Kibana.
+- **[COMPLETE_PERFORMANCE_TESTING_GUIDE.md](./COMPLETE_PERFORMANCE_TESTING_GUIDE.md):** Báo cáo chi tiết đầy đủ về quy trình và kết quả test.
+- **[POSTMAN_TESTING_GUIDE.md](./POSTMAN_TESTING_GUIDE.md):** Hướng dẫn kiểm thử chức năng bằng Postman.
+- **[POSTMAN_KIBANA_GUIDE.md](./POSTMAN_KIBANA_GUIDE.md):** Hướng dẫn sử dụng Kibana để giám sát log.
