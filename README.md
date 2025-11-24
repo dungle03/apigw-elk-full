@@ -50,7 +50,7 @@ flowchart TD
         subgraph Backend [" "]
             direction LR
             UserSvc[🚀 User Service<br/>NestJS]:::remoteStyle
-            KC[🔑 Keycloak<br/>IAM]:::remoteStyle
+            KC[🔑 Keycloak]:::remoteStyle
         end
         
         subgraph ELK [" "]
