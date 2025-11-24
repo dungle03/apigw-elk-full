@@ -119,7 +119,23 @@ flowchart TD
 
 ---
 
-## 5. Kết Quả Kiểm Thử Hiệu Năng (Performance Test)
+## 5. Cấu Hình Môi Trường Kiểm Thử (Test Environment)
+
+Để đảm bảo tính khách quan, các bài test được thực hiện trên môi trường sau:
+
+*   **Gateway (Local Machine):**
+    *   OS: Windows 11
+    *   Phần mềm: Docker Desktop (WSL2), Kong Gateway 3.7
+    *   Vai trò: Xử lý Rate Limiting, JWT Auth, Logging.
+*   **Backend (VPS - Remote):**
+    *   OS: Ubuntu Server
+    *   Cấu hình: 2 vCPU, 4GB RAM (Ước tính dựa trên mức tiêu thụ 2.2GB ổn định).
+    *   Services: NestJS (User Service), Keycloak, Elasticsearch, Logstash, Kibana.
+*   **Tool Test:** Apache JMeter 5.6.3.
+
+---
+
+## 6. Kết Quả Kiểm Thử Hiệu Năng (Performance Test)
 
 Hệ thống đã trải qua quy trình kiểm thử nghiêm ngặt với **JMeter** để đảm bảo độ ổn định và khả năng bảo mật. Dưới đây là bảng tổng hợp kết quả thực tế:
 
@@ -169,7 +185,49 @@ Hệ thống đã trải qua quy trình kiểm thử nghiêm ngặt với **JMet
 
 ---
 
-## 6. Kết Luận & Khuyến Nghị
+## 7. Trực Quan Hóa Số Liệu (Biểu Đồ)
+
+Dưới đây là các biểu đồ minh họa sự hiệu quả của hệ thống dựa trên số liệu thực tế:
+
+### 📊 1. So Sánh Độ Trễ (Latency Comparison)
+*Chứng minh: Gateway giúp User thật truy cập nhanh hơn khi bị tấn công.*
+
+```mermaid
+xychart-beta
+    title "Độ Trễ Trung Bình (ms) - Thấp hơn là Tốt hơn"
+    x-axis ["Direct VPS", "Via Gateway", "User (Under Attack)"]
+    y-axis "Latency (ms)" 0 --> 1200
+    bar [612, 1040, 446]
+```
+
+### 🚀 2. So Sánh Thông Lượng (Throughput)
+*Chứng minh: Hệ thống hoạt động ổn định trong giới hạn an toàn.*
+
+```mermaid
+xychart-beta
+    title "Thông Lượng (Req/s) - Cao hơn là Tốt hơn"
+    x-axis ["Max Capacity", "Safe Limit", "Stable Load"]
+    y-axis "Req/s" 0 --> 800
+    bar [738.4, 288.2, 149.8]
+```
+
+### 🛡️ 3. Tỷ Lệ Xử Lý Thành Công (Success Rate)
+*So sánh tỷ lệ request thành công giữa User thật và Kẻ tấn công.*
+
+```mermaid
+xychart-beta
+    title "Tỷ Lệ Request Thành Công (%)"
+    x-axis ["Attacker (Blocked)", "Valid User (Success)"]
+    y-axis "% Success" 0 --> 100
+    bar [0, 84.1]
+```
+*(Attacker bị chặn 100%. User thật thành công 84.1%, 15.9% lỗi do quá tải tài nguyên).*
+
+---
+
+## 8. Kết Luận & Khuyến Nghị
+
+
 
 ### Điểm Mạnh
 1.  **An Toàn:** Hệ thống hoạt động như một "khiên chắn" hiệu quả, chặn đứng mọi nỗ lực tấn công Brute-force.
@@ -182,7 +240,7 @@ Hệ thống đã trải qua quy trình kiểm thử nghiêm ngặt với **JMet
 
 ---
 
-## 7. Tài Liệu Tham Khảo Thêm
+## 9. Tài Liệu Tham Khảo Thêm
 
 - **[COMPLETE_PERFORMANCE_TESTING_GUIDE.md](./COMPLETE_PERFORMANCE_TESTING_GUIDE.md):** Báo cáo chi tiết đầy đủ về quy trình và kết quả test.
 - **[POSTMAN_TESTING_GUIDE.md](./POSTMAN_TESTING_GUIDE.md):** Hướng dẫn kiểm thử chức năng bằng Postman.
