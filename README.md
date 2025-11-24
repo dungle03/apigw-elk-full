@@ -20,34 +20,54 @@ Ngày nay, API là xương sống của hầu hết các ứng dụng hiện đ�
 - **Máy Local (Máy thật):** Chỉ chạy thành phần nhẹ là Kong API Gateway, đóng vai trò là cổng vào duy nhất cho mọi request từ client.
 
 ```mermaid
-flowchart LR
-    %% Define Styles
-    classDef client fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef gateway fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
-    classDef backend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    classDef monitor fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+flowchart TD
+    %% Styling
+    classDef clientStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#0d47a1
+    classDef localStyle fill:#fff3e0,stroke:#f57c00,stroke-width:3px,color:#e65100
+    classDef remoteStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:3px,color:#1b5e20
+    classDef monitorStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#4a148c
 
-    %% Nodes
-    User([� Client / Attacker]):::client
-    
-    subgraph Local ["🛡️ Local Machine"]
-        Kong[("🦍 Kong Gateway\n(JWT, RateLimit, Log)")]:::gateway
-    end
-    
-    subgraph VPS ["☁️ Remote VPS"]
+    %% Client Layer
+    Client([👤 Client/User]):::clientStyle
+
+    %% Local Machine Layer
+    subgraph Local ["🏠 Local Machine"]
         direction TB
-        App["🚀 User Service"]:::backend
-        Auth["🔐 Keycloak"]:::backend
-        ELK["📊 ELK Stack\n(Logs & Dashboard)"]:::monitor
+        Kong[🦍 Kong API Gateway]:::localStyle
+        
+        subgraph Plugins [" "]
+            direction LR
+            P1[⚡ Rate Limiting]:::localStyle
+            P2[🔐 JWT Validation]:::localStyle
+            P3[📝 HTTP Logging]:::localStyle
+        end
     end
 
-    %% Flows
-    User -->|"1. Request"| Kong
-    
-    Kong -->|"2. Forward (Allowed)"| App
-    Kong -.->|"4. Async Logs"| ELK
-    
-    App <-->|"3. Validate Token"| Auth
+    %% Remote VPS Layer
+    subgraph Remote ["☁️ Remote VPS Server"]
+        direction TB
+        
+        subgraph Backend [" "]
+            direction LR
+            UserSvc[🚀 User Service<br/>NestJS]:::remoteStyle
+            KC[🔑 Keycloak<br/>IAM]:::remoteStyle
+        end
+        
+        subgraph ELK [" "]
+            direction LR
+            LS[📥 Logstash]:::monitorStyle
+            ES[🗄️ Elasticsearch]:::monitorStyle
+            KB[📊 Kibana]:::monitorStyle
+        end
+    end
+
+    %% Flow Connections
+    Client ==>|1. HTTP Request| Kong
+    Kong -.->|Plugin Processing| Plugins
+    Kong ==>|2. Forward| UserSvc
+    UserSvc <-->|3. Auth| KC
+    Kong -.->|4. Async Logs| LS
+    LS --> ES --> KB
 ```
 
 ### Luồng Xác Thực Chi Tiết
