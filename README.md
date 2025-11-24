@@ -244,4 +244,4 @@ xychart-beta
 
 - **[COMPLETE_PERFORMANCE_TESTING_GUIDE.md](./COMPLETE_PERFORMANCE_TESTING_GUIDE.md):** Báo cáo chi tiết đầy đủ về quy trình và kết quả test.
 - **[POSTMAN_TESTING_GUIDE.md](./POSTMAN_TESTING_GUIDE.md):** Hướng dẫn kiểm thử chức năng bằng Postman.
-- **[POSTMAN_KIBANA_GUIDE.md](./POSTMAN_KIBANA_GUIDE.md):** Hướng dẫn sử dụng Kibana để giám sát log.
+- **[KIBANA_GUIDE.md](./KIBANA_GUIDE.md):** Hướng dẫn sử dụng Kibana để giám sát log.

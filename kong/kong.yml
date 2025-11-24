@@ -9,7 +9,7 @@ consumers:
         algorithm: RS256
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----
-          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs8cilwMBMzP4xk4XDi4FsiYEH2C/MSDqgFPqRjwFdZP9b2fquzeuCLsOoO5oAus2mTY6cCejDOJaoOBSRFS+3lXCSjAIWXJ0wZrKR05tCgslt5AukXoXgP1AIgiELil69/z55oh9ajfeHzl1Bp8qcL8ibUqv2eQ/qRq89qQXgwXIRmepvVn/EPz/2EYEtLmKdnWSsFIx8+KBEyDFKOjSEf+Vg06Wbt2R/0F3i8O3k84kAqcQ3Xvc4cXlpSeudGPNxa43+NnpGH6CdS9YBPgyeKiNVR/2OQSEtPxkkagZTQ6VH4TsdFTSjKfZCRZFljNrrMSms+Emzs+CbA3R3TALUQIDAQAB
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1jwe+ekZAKnXUtvlgHITrIXJYefTyzzOloqLWzD23Yd/bPpaPvKApyQvnTub8tXd/ACG5U3fTItySBp+2RY/tNW1YKZw7TTVdyWCt0qyJVGxUpCEC/KassxpR/LF8Js25+w7Z4bqzfFTfsJzKUFOFOgNMDD4vJKDEgLFMhHwgXjsVLXVy1P9vNDyLXmde+IT5GvHMTK+SWZT8XgPytai6xf7UdA+pAz91s0soILJFKXFsbUD9u4roIC2OD/XFHYxLRzpRLpcSWutOJQZbcc//kt24AaBGT8+L/AuVNRW/miBODTZSihl3Np7JsHK/1Q+r2uZQtGiapackN0iV+yP1wIDAQAB
           -----END PUBLIC KEY-----
 
 # Global Plugins
@@ -53,7 +53,7 @@ services:
                   end
           - name: rate-limiting
             config:
-              second: 5
+              second: 5 # Chặn chặt lượng request cho kẻ tấn công (5 req/s)
               minute: 60
               policy: local
               fault_tolerant: true
@@ -79,6 +79,6 @@ services:
               maximum_expiration: 3600
           - name: rate-limiting
             config:
-              minute: 100
+              minute: 10000 # Mở rộng lượng request cho User thật (10,000 req/phút)
               policy: local
               fault_tolerant: true
