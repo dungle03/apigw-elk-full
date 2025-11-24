@@ -20,34 +20,34 @@ Ngày nay, API là xương sống của hầu hết các ứng dụng hiện đ�
 - **Máy Local (Máy thật):** Chỉ chạy thành phần nhẹ là Kong API Gateway, đóng vai trò là cổng vào duy nhất cho mọi request từ client.
 
 ```mermaid
-flowchart TD
-    subgraph "Client"
-        User[Client]
+flowchart LR
+    %% Define Styles
+    classDef client fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef gateway fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+    classDef backend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef monitor fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+
+    %% Nodes
+    User([� Client / Attacker]):::client
+    
+    subgraph Local ["🛡️ Local Machine"]
+        Kong[("🦍 Kong Gateway\n(JWT, RateLimit, Log)")]:::gateway
+    end
+    
+    subgraph VPS ["☁️ Remote VPS"]
+        direction TB
+        App["🚀 User Service"]:::backend
+        Auth["🔐 Keycloak"]:::backend
+        ELK["📊 ELK Stack\n(Logs & Dashboard)"]:::monitor
     end
 
-    subgraph "API Gateway (Kong)"
-        direction LR
-        RateLimit[Rate Limiting]
-        JWT[JWT Validation]
-        Logging[Logging]
-    end
-
-    subgraph "Backend Services"
-        UserService[User Service]
-        Keycloak[Keycloak]
-    end
-
-    subgraph "Monitoring (ELK)"
-        Logstash
-        Elasticsearch
-        Kibana
-    end
-
-    User -->|"Request"| API_Gateway
-    API_Gateway -->|"Forward"| Backend_Services
-    Backend_Services -->|"Response"| API_Gateway
-    API_Gateway -->|"Response"| User
-    API_Gateway -->|"Logs"| Monitoring
+    %% Flows
+    User -->|"1. Request"| Kong
+    
+    Kong -->|"2. Forward (Allowed)"| App
+    Kong -.->|"4. Async Logs"| ELK
+    
+    App <-->|"3. Validate Token"| Auth
 ```
 
 ### Luồng Xác Thực Chi Tiết
